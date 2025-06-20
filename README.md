@@ -58,3 +58,21 @@ La notebook resultante debe ser capaz de reproducir la curva de BER correspondie
 Utilizar ademas una celda de la Jupyter Notebook para desarrollar la matematica, conceptualizar la teoría y/o lógica utilizada en el algoritmo propuesto por ud.
 
 **Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
+
+---
+
+## Quinta Parte: Implementación del sistema LoRa en el SDR
+
+A partir del Paper de referencia **"From Demodulation to Decoding: Toward Complete LoRa PHY Understanding and Implementation"** implementar la transmisión de tramas LoRa en el transmisor
+
+![Imagen1](img/image4.png)
+
+y las etapas de Dechirping, Window Alignment, Peak Merging y clock Recovery en el receptor 
+
+![Imagen1](img/image5.png)
+
+Probar el sistema futilizando en los SDRs para el envío de mensajes cortos.
+
+Utilizar ademas una celda de la Jupyter Notebook para desarrollar la matematica, conceptualizar la teoría y/o lógica utilizada en el algoritmo propuesto por ud.
+
+**Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
