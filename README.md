@@ -34,3 +34,19 @@ Utilizar una celda de la Jupyter Notebook para desarrollar la matematica y/o ló
 **Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
 
 ![Imagen1](img/image2.png)
+
+---
+
+## Tercera Parte: Implementación del ruido del Canal
+
+Incorporar en la Jupyter Notebook previamente utilizada la implementación del ruido AWGN (ruido aditivo blanco gaussiano) que introduce el canal de comunicaciones en la señal transmitida. 
+Este ruido debe ser generado aleatoriamente con una distribución de probabilidad gaussiana de media cero y varianza $σ2\sigma^2σ2$, determinada a partir de la relación señal-ruido (SNR) expresada en decibeles $(SNRdB_\text{dB}dB​)$ seleccionada. 
+La notebook resultante debe ser capaz de reproducir la curva de BER correspondiente al escenario Flat FSCM, cuyos parámetros se detallan en la Sección IV del paper de referencia. Realizar también la curva de SER correspondiente.
+Utilizar ademas una celda de la Jupyter Notebook para desarrollar la matematica, conceptualizar la teoría y/o lógica utilizada en el algoritmo propuesto por ud.
+
+**Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
+
+![Imagen1](img/image3.png)
+
+---
+
