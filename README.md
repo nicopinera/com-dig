@@ -50,3 +50,11 @@ Utilizar ademas una celda de la Jupyter Notebook para desarrollar la matematica,
 
 ---
 
+## Cuarta Parte: Implementación de un canal selectivo en frecuencia
+
+Incorporar en la Jupyter Notebook previamente utilizada la implementación del canal selectivo en frecuencia $h(nT ) = √0.8δ(nT ) + √0.2δ(nT - T )$ propuesto por Vangelista en el paper de referencia. 
+La notebook resultante debe ser capaz de reproducir la curva de BER correspondiente al escenario Freq Sel FSCM, cuyos parámetros se detallan en la Sección IV del paper de referencia. Realizar también la curva de SER correspondiente.
+
+Utilizar ademas una celda de la Jupyter Notebook para desarrollar la matematica, conceptualizar la teoría y/o lógica utilizada en el algoritmo propuesto por ud.
+
+**Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
