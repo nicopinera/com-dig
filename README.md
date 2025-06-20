@@ -1,5 +1,8 @@
 # Comunicaciones Digitales - Trabajo Integrador
-Trabajo Integrador de Comunicaciones Digitales
+Trabajo Integrador de Comunicaciones Digitales - UNC - Facultad de Ciencias Exactas Fisica y Naturales
+Alumnos:
+1. Krede, Julian
+2. Piñera, Nicolas
 
 ---
 
