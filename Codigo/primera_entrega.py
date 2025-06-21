@@ -52,20 +52,36 @@ def codificador(cantidad_Bits,SF,bits_transmitidos):
 
     return numero_de_simbolos,simbolos
 
-def decoder(N_bits,N_symbols,symbols):
-    bits_rx = np.zeros(N_bits, dtype=int)
-    for i in range(N_symbols):
-        value = symbols[i]
+def decoder(numero_de_bits,numero_de_simbolos,simbolos,SF):
+    """
+    Devuelve la decodificacion de los bits transmitidos
+
+    Args:
+        numero_de_bits (int): Cantidad de bits transmitidos
+        numero_de_simbolos (int): Cantidad de Simbolos
+        SF (int): Spreading Factor
+        simbolos (Array): Vector de numeros decimales para decodificar
+
+    Returns:
+        bits_recibidos (array): bits recibidos luego de la decodificacion
+    """
+    # Se crea un array de ceros donde se almacenarán los bits recuperados.
+    bits_recibidos = np.zeros(numero_de_bits, dtype=int)
+
+    # Se recorre cada símbolo (número codificado).
+    for i in range(numero_de_simbolos):
+
+        value = simbolos[i]
         for h in range(SF):
-            bits_rx[i * SF + h] = (value >> h) & 1  # extrae el bit h del símbolo
-    return bits_rx
+            bits_recibidos[i * SF + h] = (value >> h) & 1  # extrae el bit h del símbolo
+    return bits_recibidos
 
 def simulacion(cant_de_bits,SF):
     bits_transmitidos = generadorBits(cant_de_bits)
-    print(bits_transmitidos[0:30])
+    print("Primeros 10 bits a transmitir: " + bits_transmitidos[0:10])
 
     numero_simbolos, simbolos = codificador(cant_de_bits,SF,bits_transmitidos)
-    print(numero_simbolos)
+    print("Cantidad de simbolos detectados: "+numero_simbolos)
     print(simbolos[0:30])
 
     bits_recibidos = decoder(cant_de_bits,numero_simbolos,simbolos)
