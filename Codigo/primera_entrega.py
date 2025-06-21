@@ -1,61 +1,93 @@
 import numpy as np
-## Encoder segun la ecuacion 1 del paper
+import os
+os.system('cls')
+## Codificador y decodificador para la primera entrega
 
-def generadorBits(cant_de_bits,SF):
-    if(cant_de_bits % SF == 0):
-        bits_tx = np.random.randint(0, 2, size=N_bits)
-        return bits_tx
-    else:
-        return "La cantidad de bits debe ser múltiplo del SF."
 
-def encoder():
-    pass
+def generadorBits(cant_de_bits):
+    """
+    Genera un vector de bits aleatorios (0 y 1) de longitud especificada.
 
-def decoder():
-    pass
+    Args:
+        cant_de_bits (int): Cantidad de bits a generar.
+
+    Returns:
+        np.ndarray: Vector de bits aleatorios (0 y 1).
+    """
+
+    bits_tx = np.random.randint(0, 2, size=cant_de_bits)
+    return bits_tx
+
+def encoder(cant_bits,SF,bits_tx):
+    N_symbols = cant_bits // SF
+    symbols = np.zeros(N_symbols, dtype=int)
+    for i in range(N_symbols):
+        for h in range(SF):
+            bit = bits_tx[i * SF + h]
+            symbols[i] += bit * (2 ** h)
+    return N_symbols,symbols
+
+def decoder(N_bits,N_symbols,symbols):
+    bits_rx = np.zeros(N_bits, dtype=int)
+    for i in range(N_symbols):
+        value = symbols[i]
+        for h in range(SF):
+            bits_rx[i * SF + h] = (value >> h) & 1  # extrae el bit h del símbolo
+    return bits_rx
 
 def simulacion(cant_de_bits,SF):
-    bits_transmitidos = generadorBits(cant_de_bits,SF)
+    bits_transmitidos = generadorBits(cant_de_bits)
     print(bits_transmitidos[0:30])
-    pass
+
+    numero_simbolos, simbolos = encoder(cant_de_bits,SF,bits_transmitidos)
+    print(numero_simbolos)
+    print(simbolos[0:30])
+
+    bits_recibidos = decoder(cant_de_bits,numero_simbolos,simbolos)
 
 
 
-simulacion()
-# Parámetro: Spreading Factor
-SF = 7  # podés cambiarlo entre 7 y 12
 
-# Cantidad de bits a transmitir (debe ser múltiplo de SF)
-N_bits = 7000  # por ejemplo
+    bit_errors = np.sum(bits_recibidos != bits_transmitidos)
+    BER = bit_errors / cant_de_bits
+
+    print("Bits originales (muestra):   ", bits_transmitidos[:2*SF])
+    print("Bits decodificados (muestra):", bits_recibidos[:2*SF])
+    print(f"BER = {BER:.6f}")
 
 
-# ---------- Codificador ----------
-# Generación de bits aleatorios (0 o 1)
-bits_tx = np.random.randint(0, 2, size=N_bits)
+# ----------- Parámetros ----------
+SF = 7
+N_bits = 7000  # Debe ser múltiplo de SF
+assert N_bits % SF == 0, "La cantidad de bits debe ser múltiplo del SF."
+N_symbols = N_bits // SF
 
-# Reshape en bloques de SF bits
-bits_reshaped = bits_tx.reshape((-1, SF))
+simulacion(N_bits,SF)
 
-# Cálculo de los símbolos (Eq. 1)
-powers_of_two = 2 ** np.arange(SF)  # [2^0, 2^1, ..., 2^{SF-1}]
-symbols = bits_reshaped @ powers_of_two  # producto matricial
+# ----------- Generación de bits aleatorios ----------
+#bits_tx = np.random.randint(0, 2, N_bits)
 
-# ---------- Decodificador ----------
-# Decodificación de cada símbolo a bits (binario)
-bits_rx = ((symbols[:, None] & (1 << np.arange(SF))) > 0).astype(int)
+# ----------- Codificador (suma directa como en ecuación 1) ----------
+#symbols = np.zeros(N_symbols, dtype=int)
 
-# Decodificación de cada símbolo a bits (binario)
-bits_rx = ((symbols[:, None] & (1 << np.arange(SF))) > 0).astype(int)
+#for i in range(N_symbols):
+#    for h in range(SF):
+#        bit = bits_tx[i * SF + h]
+#        symbols[i] += bit * (2 ** h)
 
-# Reconstrucción de la secuencia de bits
-bits_rx_flat = bits_rx.reshape(-1)
+# ----------- Decodificador (extrae bits desde cada símbolo) ----------
+#bits_rx = np.zeros(N_bits, dtype=int)
 
-# ---------- Comparación y BER ----------
-# Cálculo del Bit Error Rate (BER)
-bit_errors = np.sum(bits_rx_flat != bits_tx)
-BER = bit_errors / N_bits
+#for i in range(N_symbols):
+#    value = symbols[i]
+#    for h in range(SF):
+#        bits_rx[i * SF + h] = (value >> h) & 1  # extrae el bit h del símbolo
 
-# ---------- Resultados ----------
-print("Bits originales (muestra):", bits_tx[:SF*2])
-print("Bits decodificados (muestra):", bits_rx_flat[:SF*2])
-print(f"BER = {BER:.6f}")
+# ----------- Cálculo de BER ----------
+#bit_errors = np.sum(bits_rx != bits_tx)
+#BER = bit_errors / N_bits
+
+# ----------- Mostrar resultados ----------
+#print("Bits originales (muestra):   ", bits_tx[:2*SF])
+#print("Bits decodificados (muestra):", bits_rx[:2*SF])
+#print(f"BER = {BER:.6f}")
