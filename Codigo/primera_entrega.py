@@ -4,28 +4,52 @@ os.system('cls')
 ## Codificador y decodificador para la primera entrega
 
 
-def generadorBits(cant_de_bits):
+def generadorBits(cantidad_Bits):
     """
     Genera un vector de bits aleatorios (0 y 1) de longitud especificada.
 
     Args:
-        cant_de_bits (int): Cantidad de bits a generar.
+        cantidad_Bits (int): Cantidad de bits a generar.
+
+    Returns:
+        bits_transmitidos: Vector de bits aleatorios (0 y 1).
+    """
+    bits_transmitidos = np.random.randint(0, 2, size=cantidad_Bits)
+    return bits_transmitidos
+
+
+
+def codificador(cantidad_Bits,SF,bits_transmitidos):
+    """
+    Devuelve la codificacion en decimal del vector de bits a transmitir.
+
+    Args:
+        cantidad_Bits (int): Cantidad de bits a transmitir
+        SF (int): Spreading Factor
+        bits_transmitidos (array): Vector de bits a transmitir
 
     Returns:
         np.ndarray: Vector de bits aleatorios (0 y 1).
     """
+    #Numero de simbolos a transmitir
+    numero_de_simbolos = cantidad_Bits // SF
 
-    bits_tx = np.random.randint(0, 2, size=cant_de_bits)
-    return bits_tx
+    # Vector de ceros con la longitud de la cantidad de simbolos
+    simbolos = np.zeros(numero_de_simbolos, dtype=int)
 
-def encoder(cant_bits,SF,bits_tx):
-    N_symbols = cant_bits // SF
-    symbols = np.zeros(N_symbols, dtype=int)
-    for i in range(N_symbols):
+    # Sumatoria - Ecuacion 1
+    ## Simbolo i
+    for i in range(numero_de_simbolos):
+
+        # de 0 hasta SF-1
         for h in range(SF):
-            bit = bits_tx[i * SF + h]
-            symbols[i] += bit * (2 ** h)
-    return N_symbols,symbols
+            "Toma bits dentro de un bloque de bits de largo SF"
+            "Luego se suma cada bit con su peso para obtener el valor decimal del simbolo a transmitir"
+
+            bit = bits_transmitidos[i * SF + h]
+            simbolos[i] += bit * (2 ** h) # Conversion a decimal
+
+    return numero_de_simbolos,simbolos
 
 def decoder(N_bits,N_symbols,symbols):
     bits_rx = np.zeros(N_bits, dtype=int)
@@ -39,7 +63,7 @@ def simulacion(cant_de_bits,SF):
     bits_transmitidos = generadorBits(cant_de_bits)
     print(bits_transmitidos[0:30])
 
-    numero_simbolos, simbolos = encoder(cant_de_bits,SF,bits_transmitidos)
+    numero_simbolos, simbolos = codificador(cant_de_bits,SF,bits_transmitidos)
     print(numero_simbolos)
     print(simbolos[0:30])
 
@@ -56,38 +80,8 @@ def simulacion(cant_de_bits,SF):
     print(f"BER = {BER:.6f}")
 
 
-# ----------- Parámetros ----------
+# ----------- Simulacion ----------
 SF = 7
 N_bits = 7000  # Debe ser múltiplo de SF
-assert N_bits % SF == 0, "La cantidad de bits debe ser múltiplo del SF."
-N_symbols = N_bits // SF
-
 simulacion(N_bits,SF)
 
-# ----------- Generación de bits aleatorios ----------
-#bits_tx = np.random.randint(0, 2, N_bits)
-
-# ----------- Codificador (suma directa como en ecuación 1) ----------
-#symbols = np.zeros(N_symbols, dtype=int)
-
-#for i in range(N_symbols):
-#    for h in range(SF):
-#        bit = bits_tx[i * SF + h]
-#        symbols[i] += bit * (2 ** h)
-
-# ----------- Decodificador (extrae bits desde cada símbolo) ----------
-#bits_rx = np.zeros(N_bits, dtype=int)
-
-#for i in range(N_symbols):
-#    value = symbols[i]
-#    for h in range(SF):
-#        bits_rx[i * SF + h] = (value >> h) & 1  # extrae el bit h del símbolo
-
-# ----------- Cálculo de BER ----------
-#bit_errors = np.sum(bits_rx != bits_tx)
-#BER = bit_errors / N_bits
-
-# ----------- Mostrar resultados ----------
-#print("Bits originales (muestra):   ", bits_tx[:2*SF])
-#print("Bits decodificados (muestra):", bits_rx[:2*SF])
-#print(f"BER = {BER:.6f}")
