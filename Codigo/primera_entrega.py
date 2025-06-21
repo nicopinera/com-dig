@@ -29,7 +29,8 @@ def codificador(cantidad_Bits,SF,bits_transmitidos):
         bits_transmitidos (array): Vector de bits a transmitir
 
     Returns:
-        np.ndarray: Vector de bits aleatorios (0 y 1).
+        numero_de_simbolos (int): Cantidad de simbolos codificados
+        simbolos (array): vector de simbolos codificados
     """
     #Numero de simbolos a transmitir
     numero_de_simbolos = cantidad_Bits // SF
