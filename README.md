@@ -9,7 +9,7 @@ Alumnos:
 ## Primera Parte: Diseño del Codificador-Decodificador
 Utilizando una Jupyter Notebook, implementar el codificador de la ecuación (1) propuesto en el paper de Vangelista y su correspondiente decodificador. 
 El diseño debe permitir enviar una cantidad de bits múltiplo del **Spreading Factor (SF)**. Estos bits tienen que ser aleatorios con una función de distribución de probabilidad uniforme. 
-El script debe permitir imprimir una parte de los bits transmitidos y los bits decodificados. 
+El script debe permitir imprimir una parte de los bits transmitidos y los bits decodificados.
 A la salida del decodificador se debe calcular e imprimir la probabilidad de error de bit (BER), entendiendose como la relación entre la cantidad de bits errados sobre la cantidad de bits enviados. 
 Utilizar una celda de la Jupyter Notebook para desarrollar la matematica y/o lógica utilizada en el algoritmo propuesto por ud. 
 
