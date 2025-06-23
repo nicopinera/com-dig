@@ -49,3 +49,64 @@ $$
 $$
 
 Por lo tanto, la secuencia de bits recuperada es $[0\ 1\ 1\ 1\ 1\ 0\ 0\ 0]$.
+
+## Conformador de onda y conformador de n-tuplas
+
+### 1. Conformador de onda
+
+El proximo paso en nuestro sistema de comunicacion es el conformador de onda o waveform former, el cual es la etapa posterior al codificador. Nuestro conformador de onda implementa la modulación **_Frequency Shift Chirp Modulation_ (FSCM)**.
+
+En esta modulación, cada símbolo se asocia a una frecuencia inicial determinada por su valor decimal $s(nT_s)$  A partir de esta frecuencia, la señal modulada presenta un barrido lineal en frecuencia (tipo chirp), donde la frecuencia incrementa linealmente con el tiempo, siguiendo el índice $k=0,1,...,2^{SF}-1$, hasta alcanzar un valor máximo de $2^{SF}$. 
+
+Luego, la frecuencia decae hasta 0 y vuelve a incrementarse, completando así una oscilación en frecuencia que regresa al valor inicial. Esta modulación al realizarse con una señal compleja, se compone de una componente real o fase (I) y otra componente imaginaria o cuadratura (Q). Esto se representa por la siguiente ecuacion: 
+
+
+$$\Large c(nT_s + kT) = \frac{1}{\sqrt{2^{SF}}} \cdot e^{j2\pi[(s(nT_s)+k)\cdot{\bmod{2^{SF}}}](kT\frac{B}{2^{SF}})}\quad k=0,...,2^{SF}-1$$
+
+En la misma: 
+- Toma un símbolo codificado $𝑠∈{0,1,...,2^{𝑆𝐹}−1}$
+- Lo inserta como un shift de frecuencia inicial en una señal chirp.
+- Genera una onda compleja cuya frecuencia aumenta linealmente en el tiempo (chirp) y comienza en una frecuencia determinada por **𝑠**.
+
+Aplicando la ecuación de **Euler** se llega a la siguiente expresión equivalente:
+
+$$c(nT_s + kT) = \frac{1}{\sqrt{2^{SF}}} \cdot \left[ \cos\left(2\pi \cdot \left((s(nT_s) + k) \bmod 2^{SF}\right) \cdot k\frac{T B}{2^{SF}}\right) + j \cdot \sin\left(2\pi \cdot \left((s(nT_s) + k) \bmod 2^{SF}\right) \cdot k\frac{T B}{2^{SF}}\right) \right] \quad k = 0, \dots, 2^{SF} - 1$$
+
+De este modo, se muestran claramente las dos partes ortogonales de la señal: la componente en fase, asociada al **coseno** (parte real), y la componente en cuadratura, asociada al **seno** (parte imaginaria)
+
+Analizando las ecuación se pueden observar:
+
+
+- $k$ Es el indice de tiempo discreto que actua como contador haciendo que la frecuencia aumente linealmente.
+- La frecuencia inicial (cuando $k=0$) viene dado por el valor del simbolo $s(nT_s)$
+- El modulo de $(s(nT_s) + k)$ en base $2^{SF}$ ($(s(nT_s) + k) \bmod 2^{SF}$) tiene por fin limitar el crecimiento lineal de la frecuencia hasta un valor de frecuencia maximo $2^{SF}-1$ con el proposito de limitar el ancho de banda. Esta operacion genera un discontinuidad en la frecuencia haciendo que la misma caiga desde el valor maximo hasta $0$ para luego continuar creciendo hasta el valor inicial $s(nT_s)$ finalizando el periodo $T_s$ del simbolo.
+- El factor $\frac{1}{\sqrt{2^{SF}}}$ tiene por fin normalizar la potencia de la señal
+- El periodo de muestreo $\frac{TB}{2^{SF}}$
+
+### 2. Formador de ntuplas
+
+El formador de n-tuplas (o n-tuple former) es una etapa fundamental en la recepción de señales LoRa, ya que permite identificar el símbolo transmitido a partir de la señal recibida. Su función principal es correlacionar la señal recibida con todas las posibles formas de onda base (chirps) generadas por los diferentes símbolos posibles, para determinar cuál de ellas se encuentra presente en la señal.
+
+En la práctica, esto se realiza aplicando una proyección (producto interno) de la señal recibida $r(nT_s + kT)$ sobre cada una de las bases conjugadas $c^*(nT_s + kT)$ asociadas a los posibles valores de símbolo $q$. El símbolo detectado será aquel que maximice el valor absoluto de la correlación.
+
+Matemáticamente, la proyección se expresa como:
+
+$$\langle r(nT_s+kT),c(nT_s+kT)|_{s(nT_s)=q} \rangle$$
+
+$$=\sum_{k=0}^{2^{SF}-1}r(nT_s+kT)\, \cdot \, c^*(nT_s+kT)|_{s(nT_s)=q}$$
+
+Para simplificar el procesamiento, se suele realizar una operación de dechirping, que consiste en multiplicar la señal recibida por el conjugado de un chirp de referencia. Esto transforma la señal chirp en una señal de frecuencia constante, facilitando la detección mediante una transformada de Fourier discreta (DFT):
+
+$$d(nT_s + kT)=r(nT_s + kT) \cdot e^{-j2\pi \frac{k^2}{2^{\text{SF}}}}$$
+
+Luego, se calcula la DFT de $d(nT_s + kT)$:
+
+$$\sum_{k=0}^{2^{SF}-1}d(nT_s + kT)\, \cdot \,\frac{1}{\sqrt{2^{SF}}}e^{-j2\pi p k \frac{1}{2^{SF}}}$$
+
+El índice $p$ para el cual la DFT alcanza su máximo corresponde al símbolo transmitido. Así, el formador de n-tuplas permite recuperar el valor original del símbolo a partir de la señal recibida, aprovechando la ortogonalidad de los chirps generados por los diferentes símbolos.
+
+### 3. Symbol error rate
+
+El _Symbol Error Rate_ (SER), similar al BER, representa la proporción de simbolos recibidos con error respecto al total de simbolos transmitidos. Se calcula de la siguiente forma:
+
+$$SER=\frac{\text{número de simbolos erróneos}}{\text{total de simbolos transmitidos}}$$
