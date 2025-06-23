@@ -26,6 +26,26 @@ Donde:
 - $T_s$ es el período de un símbolo
 - $n$ es el índice del símbolo que indica la posición temporal dentro de la secuencia.
 
-Por ejemplo, si se tiene un $SF=8$ y se desea codificar el dato $[0 1 1 1 1 0 0 0]$:
+Por ejemplo, si se tiene un $SF=8$ y se desea codificar el dato $[0\ 1\ 1\ 1\ 1\ 0\ 0\ 0]$:
 
-$$s(nT_s) = \sum_{h=0}^{7} \text{w}(nT_s)_h \cdot 2^h =0*2^7+1*2^6+1*2^5+1*2^4+1*2^3+0*2^2+0*2^1+0*2^0=120$$
+$$
+s(nT_s) = \sum_{h=0}^{7} \text{w}(nT_s)_h \cdot 2^h = 0 \times 2^7 + 1 \times 2^6 + 1 \times 2^5 + 1 \times 2^4 + 1 \times 2^3 + 0 \times 2^2 + 0 \times 2^1 + 0 \times 2^0 = 120
+$$
+
+### 2. Decodificador
+
+El proceso de decodificación consiste en recuperar la secuencia de bits original a partir del símbolo recibido. Esto se logra descomponiendo el valor decimal del símbolo en su representación binaria de $SF$ bits. Matemáticamente, se realiza la conversión inversa:
+
+Dado un símbolo $s(nT_s)$ y un $SF$ determinado, se obtiene el vector de bits $\text{w}(nT_s)_h$ tal que:
+
+$$
+s(nT_s) = \sum_{h=0}^{\text{SF}-1} \text{w}(nT_s)_h \cdot 2^h
+$$
+
+Por ejemplo, si se recibe el símbolo $s(nT_s) = 120$ y $SF = 8$, la representación binaria es:
+
+$$
+120_{10} = 01111000_2
+$$
+
+Por lo tanto, la secuencia de bits recuperada es $[0\ 1\ 1\ 1\ 1\ 0\ 0\ 0]$.

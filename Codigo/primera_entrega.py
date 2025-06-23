@@ -19,9 +19,9 @@ def generadorBits(cantidad_Bits):
     return bits_transmitidos
 
 
-def codificador(cantidad_Bits, SF, bits_transmitidos):
+def codificador(SF, bits_transmitidos):
     """
-    Devuelve la codificacion en decimal del vector de bits a transmitir.
+    Codifica un señal binaria mediante el polinomio de numeración posicional en base 2 
 
     Args:
         cantidad_Bits (int): Cantidad de bits a transmitir
@@ -32,6 +32,7 @@ def codificador(cantidad_Bits, SF, bits_transmitidos):
         numero_de_simbolos (int): Cantidad de simbolos codificados
         simbolos (array): vector de simbolos codificados
     """
+    cantidad_Bits = len(bits_transmitidos)
     # Numero de simbolos a transmitir
     numero_de_simbolos = cantidad_Bits // SF
 
@@ -53,29 +54,30 @@ def codificador(cantidad_Bits, SF, bits_transmitidos):
     return numero_de_simbolos, simbolos
 
 
-def decodificador(numero_de_bits, numero_de_simbolos, simbolos, SF):
-    """
-    Devuelve la decodificacion de los bits transmitidos
-
+def decodificador(simbolos_rx, SF=8):
+    """Decodifica una señal binaria mediante el polinomio de numeración posicional en base 2 
+    
     Args:
-        numero_de_bits (int): Cantidad de bits transmitidos
-        numero_de_simbolos (int): Cantidad de Simbolos
-        SF (int): Spreading Factor
-        simbolos (Array): Vector de numeros decimales para decodificar
-
+        SF (int, optional): Spreading factor valor entero que representa la cantidad de bits que componen un simbolo codificado puede tomar valores [7,12]. Defaults to 8.
+        simbolos_rx (_type_, optional): _description_. Defaults to None.
+        
     Returns:
-        bits_recibidos (array): bits recibidos luego de la decodificacion
+        simbolos_tx (list): Simbolos decodificados en base 2.
     """
-    # Se crea un array de ceros donde se almacenarán los bits recuperados.
-    bits_recibidos = np.zeros(numero_de_bits, dtype=int)
+    if(SF < 7 or SF > 12):
+        raise ValueError("El Spreading Factor debe ser un valor entero entre 7 y 12")
+    
+    bits_rx = []
 
-    # Se recorre cada símbolo (número codificado).
-    for i in range(numero_de_simbolos):
+    for simbolo in simbolos_rx:
+        bits = []
+        for _ in range(SF):
+            # Algoritmo de division sucesiva por 2 para obtener los bits del simbolo
+            bits.append(simbolo % 2)
+            simbolo = simbolo//2
+        bits_rx.extend(bits)
 
-        value = simbolos[i]
-        for h in range(SF):
-            bits_recibidos[i * SF + h] = (value >> h) & 1  # extrae el bit h del símbolo
-    return bits_recibidos
+    return np.array(bits_rx)
 
 
 def simulacion(cantidad_de_bits, SF):
@@ -97,13 +99,13 @@ def simulacion(cantidad_de_bits, SF):
     print("---" * 5)
 
     # Codificacion de los bits
-    numero_simbolos, simbolos = codificador(cantidad_de_bits, SF, bits_transmitidos)
+    numero_simbolos, simbolos = codificador(SF, bits_transmitidos)
     print("Cantidad de simbolos detectados: ", numero_simbolos)
     print("Primeros 10 simbolos: ", simbolos[0:10])
     print("---" * 5)
 
     # Decodificaion de simbolos
-    bits_recibidos = decodificador(cantidad_de_bits, numero_simbolos, simbolos,SF)
+    bits_recibidos = decodificador(simbolos,SF)
     print("Primeros 10 bits recibidos: ", bits_recibidos[0:10])
 
     # Calculo
