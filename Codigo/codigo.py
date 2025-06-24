@@ -135,17 +135,15 @@ def conformador_de_onda(simbolos, SF, B=125e3):
     - B: Ancho de banda (Hz), por defecto 125 kHz
 
     Retorna:
-    - matriz de forma (len(simbolos), 2**SF) con los chirps generados
+    - matriz de forma (len(simbolos), 2**SF) con los chirps generados 
     """
     Ns = 2**SF # Muestras por simbolo
     amplitud = (1 / np.sqrt(Ns))
     T = 1/B  # Periodo de muestreo
     k = np.arange(Ns) # Arreglo de indices de muestras
-    
     simbolos_modulados = []
 
     for s in simbolos:
-        
         arg = ((s + k) % Ns) * (k * T * B / Ns) # Obtiene el argumento de la exponencial compleja
         chirp = amplitud * np.exp(1j * 2 * np.pi * arg) # Modula el simbolo
         simbolos_modulados.append(chirp) # Agrega el simbolo modulado a la matriz
@@ -238,10 +236,40 @@ def graficar_señal_modulada(simbolos_modulados, indice, SF, B=125e3):
     plt.tight_layout()
     plt.show()
 
+def graficar_señal_modulada2(simbolos_modulados, indice, SF, B=125e3):
+    """
+    Grafica la señal modulada en tiempo (I y Q) de un símbolo dado por su índice
+    dentro de la matriz de simbolos modulados.
+    """
+    Ns = 2**SF
+    T = 1/B
+    k = np.arange(Ns)
+    tiempo = k * T * 1e6  # microsegundos
+
+    muestra_simbolo_mod = simbolos_modulados[indice]
+    I = np.real(muestra_simbolo_mod)
+    Q = np.imag(muestra_simbolo_mod)
+
+    fig, axs = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
+    axs[0].plot(tiempo, I, color='blue')
+    axs[0].set_title(f"Chirp LoRa - Fase (I) - índice {indice} (SF={SF})")
+    axs[0].set_ylabel("Amplitud")
+    axs[0].grid()
+
+    axs[1].plot(tiempo, Q, color='red')
+    axs[1].set_title(f"Chirp LoRa - Cuadratura (Q) - índice {indice} (SF={SF})")
+    axs[1].set_xlabel("Tiempo [μs]")
+    axs[1].set_ylabel("Amplitud")
+    axs[1].grid()
+
+    plt.tight_layout()
+    plt.show()
+
 #Ejemplo de uso, continuando el ejemplo del capitulo anterior (Codificador y Decodificador)
 
 simbolos_modulados = conformador_de_onda(simbolos,SF)
 graficar_señal_modulada(simbolos_modulados,1,SF)
+graficar_señal_modulada2(simbolos_modulados,1,SF)
 simbolos_rx = formador_de_ntuplas(simbolos_modulados, SF)
 
 print("Símbolos codificados:", simbolos)
