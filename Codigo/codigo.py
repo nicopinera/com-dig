@@ -240,8 +240,8 @@ def graficar_señal_modulada(simbolos_modulados, indice, SF, B=125e3):
 
 #Ejemplo de uso, continuando el ejemplo del capitulo anterior (Codificador y Decodificador)
 
-simbolos_modulados = conformador_de_onda(simbolos,SF,B)
-graficar_señal_modulada(simbolos_modulados,1,SF,B)
+simbolos_modulados = conformador_de_onda(simbolos,SF)
+graficar_señal_modulada(simbolos_modulados,1,SF)
 simbolos_rx = formador_de_ntuplas(simbolos_modulados, SF)
 
 print("Símbolos codificados:", simbolos)
