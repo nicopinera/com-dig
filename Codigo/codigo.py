@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from lora import Lora
 
 os.system("cls")
 ## Codificador y decodificador para la primera entrega
