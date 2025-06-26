@@ -96,9 +96,10 @@ def calculador_ber(bits_tx, bits_rx):
     return ber
 
 # Parametros
-SF = 8
-cant_simbolos = 11
-total_bits = SF * cant_simbolos
+SF = 8                              # Spreading Factor (debe ser un valor entre 7 y 12)
+cant_simbolos = 10                  # Cantidad de símbolos a transmitir             
+total_bits = SF * cant_simbolos     # Total de bits a transmitir
+B=125e3                             # Ancho de banda (en Hz)
 
 # Generación de bits aleatorios
 bits_tx = generate_random_bits(total_bits)
@@ -125,57 +126,80 @@ print("La tasa de error de bit (BER) es: ", calculador_ber(bits_tx, bits_rx)*100
 print("---" * 10)
 
 # -------------------------------------------------------------
-def conformador_de_onda(simbolos, SF, B=125e3):
+def conformador_de_onda(simbolos, SF, samples_per_chirp, B):
     """
-    Genera la forma de onda LoRa para una secuencia de símbolos.
+    Genera la forma de onda aplicando FSCM para una secuencia de símbolos. 
 
     Parámetros:
-    - simbolos: matriz unidimensional de enteros entre 0 y 2**SF - 1
-    - SF: Spreading Factor
-    - B: Ancho de banda (Hz), por defecto 125 kHz
+    - simbolos (list): lista de símbolos a ser modulados en forma de chirps.
+    - SF (int): Spreading Factor
+    - samples_per_chirp (int): muestras por chirp o factor de oversampling
+    - B (int): Ancho de banda (Hz). 
 
     Retorna:
-    - matriz de forma (len(simbolos), 2**SF) con los chirps generados 
+    - Array (len(simbolos), total_muestras): Simbolos modulados en forma de chirps
     """
-    Ns = 2**SF # Muestras por simbolo
-    amplitud = (1 / np.sqrt(Ns))
-    T = 1/B  # Periodo de muestreo
-    k = np.arange(Ns) # Arreglo de indices de muestras
+    Ns = 2**SF # Muestras por símbolo (cuando samples_per_chirp=1)
+    T = 1 / B # Duración de símbolo (segundos)
+    delta = 1 / samples_per_chirp # Paso de tiempo para oversampling
+    total_muestras = Ns * samples_per_chirp # Total de muestras por símbolo
+
     simbolos_modulados = []
-
+    fmax = (Ns - 1) * B / Ns                         # Frecuencia máxima para el chirp, utilizado para aplicar el modulo de manera condicional
     for s in simbolos:
-        arg = ((s + k) % Ns) * (k * T * B / Ns) # Obtiene el argumento de la exponencial compleja
-        chirp = amplitud * np.exp(1j * 2 * np.pi * arg) # Modula el simbolo
-        simbolos_modulados.append(chirp) # Agrega el simbolo modulado a la matriz
+        chirp = np.zeros(total_muestras, dtype=complex)
+        k = s  
 
-    return np.array(simbolos_modulados)  # Matriz de salida (símbolos x muestras)
+        for n in range(total_muestras):
+            f = k * B / Ns
+            t = k * T
+            if f >= fmax:               # Modulo de 2**SF
+                k -= Ns                 # Devuelve k a 0
+                f = k * B / Ns          # Calcula f para k=0
+            arg = f * t * 0.5 
+            sample = (1 / np.sqrt(Ns * samples_per_chirp)) * np.exp(1j * 2 * np.pi * arg)
+            chirp[n] = sample
+            k += delta
 
-def formador_de_ntuplas(simbolos_modulados, SF):
+        simbolos_modulados.append(chirp)
+
+    return np.array(simbolos_modulados)
+
+def formador_de_ntuplas(simbolos_modulados, SF, samples_per_chirp):
     """
-    Demodula la señal previamente modulada con la funcion conformador_de_onda recuperando los símbolos.
+    Recupera los símbolos modulados en mediante FSCM y estima los símbolos transmitidos a partir de ellos.
 
     Parámetros:
-    - simbolos_modulados: matriz de (cantidad de simbolos x 2**SF) de chirps modulados
-    - SF: Spreading Factor
+    - simbolos_modulados(Array (len(simbolos), total_muestras)): Lista de símbolos modulados en forma de chirps.
+    - SF (int): Spreading Factor
+    - samples_per_chirp (int): muestras por chirp o factor de oversampling
 
     Retorna:
-    - Lista de símbolos estimados (enteros entre 0 y 2**SF - 1)
+    -(list (int)) Lista de símbolos estimados
     """
     Ns = 2**SF
-    k = np.arange(Ns)
-    
-    
+    total_muestras = Ns * samples_per_chirp
+
     simbolos_estimados = []
-    func_aux = np.exp(-1j * 2 * np.pi * k**2 / Ns)
+
+    n = np.arange(total_muestras)
+    k = n / samples_per_chirp # Ajustamos para la cantidad de samples por chirp
+    
+    exp_frec_decr= np.exp(-1j * np.pi * (k**2) / Ns)
 
     for r in simbolos_modulados:
-        # Multiplicación para obtener d(nTs+kT)
-        d = r * func_aux
-        # Calcula la transformada de Fourier discreta de d(nTs+kT)
-        fft_out = np.fft.fft(d)
-        # Estima el simbolo a partir del pico en frecu  encia
+        # Dechirp multiplicando por el conjugado del chirp base
+        dechirp = r * exp_frec_decr
+        
+        # Calculamos la FFT
+        fft_out = np.fft.fft(dechirp)
+        
+        # El valor máximo en la FFT nos da el símbolo estimado
         simbolo_estimado = int(np.argmax(np.abs(fft_out)))
-
+        
+        # Cuando se usa samples_per_chirp > 1 (oversampling), la FFT se calcula sobre Ns * samples_per_chirp puntos (en lugar de Ns).
+        simbolo_estimado = simbolo_estimado % Ns
+        
         simbolos_estimados.append(simbolo_estimado)
 
     return simbolos_estimados
@@ -198,28 +222,31 @@ def calculador_ser(simbolos_tx, simbolos_rx):
     
     return ser
 
-def graficar_señal_modulada(simbolos_modulados, indice, SF, B=125e3):
+def graficar_señal_modulada(simbolos_modulados, indice, SF, samples_per_chirp, B):
     """
     Grafica la señal modulada en tiempo (I y Q) de un símbolo dado por su índice
     dentro de la matriz de simbolos modulados.
 
     Parámetros:
-    - simbolos_modulados: matriz de salida de conformador_de_onda
-    - indice: posición del símbolo que se desea graficar
-    - SF: Spreading Factor
-    - B: ancho de banda (Hz)
+    - simbolos_modulados(Array (len(simbolos), total_muestras)): Lista de símbolos modulados en forma de chirps.
+    - indice (int): posición del símbolo que se desea graficar
+    - SF (int): Spreading Factor
+    - B (int): ancho de banda (Hz)
+    - samples_per_chirp (int): muestras por simbolo o factor de oversampling
     """
-    Ns = 2**SF # Muestras por simbolo
-    T = 1/B  # Periodo de muestreo
-    k = np.arange(Ns) # Arreglo de indices de muestras
-    tiempo = k * T * 1e6  # microsegundos
+    Ns = 2**SF                                          # Muestras base por símbolo (sin oversampling)
+    total_muestras = Ns * samples_per_chirp             # Muestras por símbolo con oversampling
+    T = 1 / B                                           # Duración total del símbolo (s)
+    T_muestra = T / samples_per_chirp                   # Duración de cada muestra (s)
+
+    tiempo = np.arange(total_muestras) * T_muestra * 1e6  # en microsegundos
 
     muestra_simbolo_mod = simbolos_modulados[indice]
     I = np.real(muestra_simbolo_mod)
     Q = np.imag(muestra_simbolo_mod)
 
-    plt.figure(figsize=(10, 4))
-    plt.plot(tiempo, I, color='blue')
+    plt.figure(figsize=(15, 2))
+    plt.plot(tiempo, I, color='blue', linewidth=0.9)
     plt.title(f"Chirp LoRa - Fase (I) - índice {indice} (SF={SF})")
     plt.xlabel("Tiempo [μs]")
     plt.ylabel("Amplitud")
@@ -227,8 +254,8 @@ def graficar_señal_modulada(simbolos_modulados, indice, SF, B=125e3):
     plt.tight_layout()
     plt.show()
 
-    plt.figure(figsize=(10, 4))
-    plt.plot(tiempo, Q, color='red')
+    plt.figure(figsize=(15, 2))
+    plt.plot(tiempo, Q, color='red', linewidth=0.9)
     plt.title(f"Chirp LoRa - Cuadratura (Q) - índice {indice} (SF={SF})")
     plt.xlabel("Tiempo [μs]")
     plt.ylabel("Amplitud")
@@ -236,91 +263,50 @@ def graficar_señal_modulada(simbolos_modulados, indice, SF, B=125e3):
     plt.tight_layout()
     plt.show()
 
-def graficar_señal_modulada2(simbolos_modulados, indice, SF, B=125e3):
+def graficar_todas_las_senales_moduladas(simbolos_modulados, SF, samples_per_chirp, B, max_muestras=None):
     """
-    Grafica la señal modulada en tiempo (I y Q) de un símbolo dado por su índice
-    dentro de la matriz de simbolos modulados.
+    Grafica la señal modulada completa solo de la parte en fase (I) concatenando los símbolos,
+    y colorea cada símbolo con un color distinto.
+
+    Parámetros:
+    - simbolos_modulados(Array (len(simbolos), total_muestras)): Lista de símbolos modulados en forma de chirps.
+    - SF: Spreading Factor
+    - B: Ancho de banda (Hz)
+    - samples_per_chirp: muestras por símbolo o factor de oversampling
+    - max_muestras: cantidad de símbolos a graficar (opcional)
     """
     Ns = 2**SF
-    T = 1/B
-    k = np.arange(Ns)
-    tiempo = k * T * 1e6  # microsegundos
+    total_muestras = Ns * samples_per_chirp
+    T = 1 / B
+    T_muestra = T / samples_per_chirp
 
-    muestra_simbolo_mod = simbolos_modulados[indice]
-    I = np.real(muestra_simbolo_mod)
-    Q = np.imag(muestra_simbolo_mod)
+    if max_muestras is None:
+        max_muestras = len(simbolos_modulados)
 
-    fig, axs = plt.subplots(2, 1, figsize=(10, 6), sharex=True)
-    axs[0].plot(tiempo, I, color='blue')
-    axs[0].set_title(f"Chirp LoRa - Fase (I) - índice {indice} (SF={SF})")
-    axs[0].set_ylabel("Amplitud")
-    axs[0].grid()
+    cmap = plt.get_cmap('tab10')
 
-    axs[1].plot(tiempo, Q, color='red')
-    axs[1].set_title(f"Chirp LoRa - Cuadratura (Q) - índice {indice} (SF={SF})")
-    axs[1].set_xlabel("Tiempo [μs]")
-    axs[1].set_ylabel("Amplitud")
-    axs[1].grid()
+    plt.figure(figsize=(15, 3))
+    for i in range(max_muestras):
+        simbolo = simbolos_modulados[i]
+        I = np.real(simbolo)
+        tiempo_local = np.arange(i * total_muestras, (i + 1) * total_muestras) * T_muestra * 1e6
+        plt.plot(tiempo_local, I, label=f'Símbolo {i}', color=cmap(i % 10), linewidth=0.6)
 
+    plt.title(f'Fase (I) de todos los símbolos concatenados (SF={SF})')
+    plt.xlabel('Tiempo [μs]')
+    plt.ylabel('Amplitud')
+    plt.grid(True)
     plt.tight_layout()
     plt.show()
 
 #Ejemplo de uso, continuando el ejemplo del capitulo anterior (Codificador y Decodificador)
 
-simbolos_modulados = conformador_de_onda(simbolos,SF)
-graficar_señal_modulada(simbolos_modulados,1,SF)
-graficar_señal_modulada2(simbolos_modulados,1,SF)
-simbolos_rx = formador_de_ntuplas(simbolos_modulados, SF)
-
+samples_per_chirp = 4
+simbolos_modulados = conformador_de_onda(simbolos,SF,samples_per_chirp,B)
+graficar_señal_modulada(simbolos_modulados,2,SF,samples_per_chirp,B)
+graficar_todas_las_senales_moduladas(simbolos_modulados,SF,samples_per_chirp,B,5)
+simbolos_rx = formador_de_ntuplas(simbolos_modulados, SF,samples_per_chirp)
 print("Símbolos codificados:", simbolos)
 print("Símbolos recibidos:", simbolos_rx)
-
 print("La tasa de error de simbolos (SER) es: ", calculador_ser(simbolos, simbolos_rx)*100, "%")
 
-
-
-"""
-
-def simulacion(cantidad_de_bits, SF):
-    
-    Realiza la simulacion de generar bits, codificarlos, decodificarlos
-    y calculo del BER (cantidad de bit errados / Bit totales transmitidos)
-    Como es el caso ideal, el BER = 0.
-
-    Args:
-        cantidad_de_bits (int) : cantidad de bits a transmitir
-        SF (int): Spreading Factor
-    
-
-    print("SIMULACION")
-    print("---" * 5)
-    # Generacion de bits
-    bits_transmitidos = generadorBits(cantidad_de_bits)
-    print("Primeros 10 bits a transmitir: ", bits_transmitidos[0:10])
-    print("---" * 5)
-
-    # Codificacion de los bits
-    numero_simbolos, simbolos = codificador(SF, bits_transmitidos)
-    print("Cantidad de simbolos detectados: ", numero_simbolos)
-    print("Primeros 10 simbolos: ", simbolos[0:10])
-    print("---" * 5)
-
-    # Decodificaion de simbolos
-    bits_recibidos = decodificador(simbolos,SF)
-    print("Primeros 10 bits recibidos: ", bits_recibidos[0:10])
-
-    # Calculo
-    bit_errors = np.sum(bits_recibidos != bits_transmitidos)
-    BER = bit_errors / cantidad_de_bits
-    print("---" * 5)
-    print("Bits originales (muestra):   ", bits_transmitidos[: 2 * SF])
-    print("Bits decodificados (muestra):", bits_recibidos[: 2 * SF])
-    print(f"BER = {BER:.6f}")
-
-
-# ----------- Simulacion ----------
-SF = 7
-N_bits = 7000  # Debe ser múltiplo de SF
-simulacion(N_bits, SF)
-
-"""

@@ -7,15 +7,13 @@ Alumnos:
 ---
 
 ## Primera Parte: Diseño del Codificador-Decodificador
-Utilizando una Jupyter Notebook, implementar el codificador de la ecuación (1) propuesto en el paper de Vangelista y su correspondiente decodificador. 
-El diseño debe permitir enviar una cantidad de bits múltiplo del **Spreading Factor (SF)**. Estos bits tienen que ser aleatorios con una función de distribución de probabilidad uniforme. 
-El script debe permitir imprimir una parte de los bits transmitidos y los bits decodificados.
-A la salida del decodificador se debe calcular e imprimir la probabilidad de error de bit (BER), entendiendose como la relación entre la cantidad de bits errados sobre la cantidad de bits enviados. 
-Utilizar una celda de la Jupyter Notebook para desarrollar la matematica y/o lógica utilizada en el algoritmo propuesto por ud. 
+Utilizando una Jupyter Notebook, generamos un array binario con distribucion uniforme el cual seran nuestros bits a transmitir, tiene una longitud multiplo del **SF (Spreading Factor)**
 
-**Test:** Si el codificador y decodificador se encuentran bien diseñados, bajo esta condición de funcionamiento debe dar un BER=0, cualquiera sea la cantidad de bits generados. 
+Posteriormente implementamos el **codificador** que se muestra en la ecuacion (1) propuesta por Vangelista, donde se agrupa dentro de nuestro vector binario, grupos de bits cuyo tamaño es de **SF (Spreading Factor)**, luego se utiliza el polinomio de numeracion tomando cada bit y multiplicandolo por $2^ĥ$ siendo $h$ la posicion del bit.
 
-**Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
+Nuestro **decodificador** fue implementado realizando las sucesivas divisiones por 2 (base binaria), guardando el modulo/resto en un vector y por ultimo invirtiendo dicho vector.
+
+Se realizo un ejemplo del funcionamiento de ambas partes, su comparacion y el calculo del **BER** que se entiende como la relacion entre la cantidad de bits errados sobre la cantidad de bits enviados. En esta etapa al no estar incluido el ruido, este valor fue igual a $0%$
 
 ![Imagen1](img/image1.png)
 

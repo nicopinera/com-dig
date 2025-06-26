@@ -123,7 +123,7 @@ El proceso de modulación en LoRa convierte bits de información en una señal c
 - **Señal transmitida**:  
   \[
   c(nT_s + kT) = \frac{1}{\sqrt{2^{SF}}} e^{j2\pi \left[(s(nT_s) + k) \mod 2^{SF}\right] \frac{k}{2^{SF}}}
-  \]  
+  \]
   - **Explicación**:  
     1. **Desplazamiento inicial**: La frecuencia inicial de la chirp está determinada por \( s(nT_s) \).  
     2. **Evolución en el tiempo**: La frecuencia aumenta linealmente con \( k \) (índice de tiempo), creando el barrido chirp.  
@@ -202,4 +202,294 @@ Receptor:
 Señal Recibida × Down-Chirp → FFT → Detección de Pico → Símbolo Decodificado
 ```
 
-Este proceso es la esencia de LoRa: bajo consumo, larga distancia y robustez gracias a la modulación chirp y la demodulación basada en FFT. ¿Hay algún detalle en el que quieras profundizar más?
+Este proceso es la esencia de LoRa: bajo consumo, larga distancia y robustez gracias a la modulación chirp y la demodulación basada en FFT.
+
+---
+
+## Detalle sobre Oversampling y el parámetro delta en la modulación LoRa (FSCM)
+
+### ¿Qué es el oversampling (`samples_per_chirp`)?
+
+- **Oversampling** significa tomar más muestras por cada símbolo de las estrictamente necesarias.
+- En LoRa, cada símbolo tiene \( N_s = 2^{SF} \) posiciones posibles, pero si se desea una señal más suave o simular una mayor tasa de muestreo (como haría un DAC real), se pueden tomar varias muestras por cada "paso" de símbolo.
+- El parámetro `samples_per_chirp` indica **cuántas muestras se toman por cada paso de símbolo**.  
+  Ejemplo:  
+  Si \( SF=8 \), entonces \( N_s=256 \). Si `samples_per_chirp=4`, se generan \( 256 \times 4 = 1024 \) muestras por símbolo.
+
+### ¿Qué es `delta` y para qué sirve?
+
+- En el código, se define:
+  ```python
+  delta = 1 / samples_per_chirp
+  ```
+- `delta` es el **incremento fraccional** que se le suma al índice \( k \) en cada muestra.
+- Si no hubiera oversampling, \( k \) avanzaría de a 1 en cada muestra (es decir, \( k = s, s+1, s+2, ... \)).
+- Con oversampling, queremos que \( k \) avance más despacio:  
+  - Si `samples_per_chirp=4`, entonces para avanzar de un valor entero de \( k \) al siguiente, necesitamos 4 muestras, así que sumamos \( 1/4 \) en cada paso.
+- Así, \( k \) avanza de a `delta` en cada muestra, logrando el efecto de oversampling.
+
+**Resumen:**  
+- **`samples_per_chirp`**: lo define el usuario, según cuántas muestras quiera por símbolo (mayor valor = señal más suave y precisa).
+- **`delta`**: es el paso fraccional para que, al recorrer todas las muestras de un símbolo, \( k \) avance exactamente 1 unidad por cada `samples_per_chirp` muestras.
+
+---
+
+## Explicación detallada del codificador (modulador) y decodificador (demodulador) LoRa (FSCM)
+
+### 1. Codificador (Modulador)
+
+El proceso de modulación en LoRa convierte bits de información en una señal chirp con un desplazamiento de frecuencia inicial.
+
+#### a. Generación del Símbolo (\( s(nT_s) \))
+
+- **Entrada**: Un vector binario \( \mathbf{w}(nT_s) \) de longitud \( SF \) (Spreading Factor).  
+  - Ejemplo: Si \( SF = 8 \), se procesan 8 bits por símbolo (\( 2^8 = 256 \) valores posibles).  
+- **Cálculo del símbolo**:  
+  \[
+  s(nT_s) = \sum_{h=0}^{SF-1} \mathbf{w}(nT_s)_h \cdot 2^h
+  \]  
+  - Esto convierte los bits en un número entero entre \( 0 \) y \( 2^{SF} - 1 \).  
+  - Ejemplo: Para \( \mathbf{w} = [1, 0, 1, 1] \) (SF=4), \( s(nT_s) = 1 \cdot 2^0 + 0 \cdot 2^1 + 1 \cdot 2^2 + 1 \cdot 2^3 = 1 + 0 + 4 + 8 = 13 \).
+
+#### b. Generación de la Señal Chirp Modulada
+
+- **Duración del símbolo**: \( T_s = 2^{SF} \cdot T \), donde \( T = 1/B \) (tiempo de muestra).  
+- **Señal transmitida**:  
+  \[
+  c(nT_s + kT) = \frac{1}{\sqrt{2^{SF}}} e^{j2\pi \left[(s(nT_s) + k) \mod 2^{SF}\right] \frac{k}{2^{SF}}}
+  \]
+  - **Explicación**:  
+    1. **Desplazamiento inicial**: La frecuencia inicial de la chirp está determinada por \( s(nT_s) \).  
+    2. **Evolución en el tiempo**: La frecuencia aumenta linealmente con \( k \) (índice de tiempo), creando el barrido chirp.  
+    3. **Operación módulo \( 2^{SF} \)**: Garantiza que la señal "repita" su barrido dentro del ancho de banda \( B \).  
+
+- **Ejemplo visual**:  
+  - Si \( s(nT_s) = 3 \) y \( SF = 4 \), la chirp comienza en una frecuencia proporcional a 3 y barre hasta \( 2^4 = 16 \) pasos, luego "vuelve a empezar".  
+
+---
+
+### 2. Primeros Bloques del Decodificador (Demodulador)
+
+El demodulador debe recuperar el símbolo \( s(nT_s) \) a partir de la señal recibida \( r(nT_s + kT) \), que incluye ruido. Aquí los pasos clave:
+
+#### a. Señal Recibida
+
+\[
+r(nT_s + kT) = c(nT_s + kT) + w(nT_s + kT)
+\]  
+- \( w(nT_s + kT) \): Ruido blanco gaussiano (AWGN).
+
+#### b. Proyección sobre la Base de Señales
+
+El receptor óptimo calcula la correlación entre la señal recibida y todas las posibles señales chirp (una para cada \( s(nT_s) \)).  
+
+1. **Multiplicación por el "down-chirp"**:  
+   - Se multiplica \( r(nT_s + kT) \) por una chirp inversa:  
+     \[
+     d(nT_s + kT) = r(nT_s + kT) \cdot e^{-j2\pi \frac{k^2}{2^{SF}}}
+     \]  
+   - **Propósito**: Eliminar el barrido de frecuencia de la chirp, dejando solo el desplazamiento inicial \( s(nT_s) \).  
+
+2. **Transformada de Fourier (FFT)**:  
+   - Se aplica una FFT de \( 2^{SF} \) puntos a \( d(nT_s + kT) \):  
+     \[
+     D(q) = \sum_{k=0}^{2^{SF}-1} d(nT_s + kT) \cdot e^{-j2\pi \frac{qk}{2^{SF}}}
+     \]  
+   - **Resultado**:  
+     - Si no hay ruido, \( D(q) \) tendrá un pico en \( q = s(nT_s) \).  
+     - Con ruido, se elige el \( q \) que maximiza \( |D(q)| \).  
+
+3. **Decisión**:  
+   - El índice \( l \) del máximo de \( |D(q)| \) es el símbolo estimado:  
+     \[
+     \hat{s}(nT_s) = \arg\max_q |D(q)|
+     \]  
+
+---
+
+### 3. Ejemplo Numérico (Simplificado)
+
+Supongamos:  
+- \( SF = 3 \) (\( 8 \) símbolos posibles).  
+- Símbolo transmitido: \( s(nT_s) = 5 \).  
+
+#### En el Transmisor
+
+1. Se genera la chirp con desplazamiento inicial 5.  
+2. La señal barre frecuencias según:  
+   \[
+   \text{Frecuencia en } k = \left[(5 + k) \mod 8\right] \cdot \frac{B}{8}
+   \]  
+
+#### En el Receptor
+
+1. Se multiplica la señal recibida por el down-chirp \( e^{-j2\pi k^2 / 8} \).  
+2. Se aplica FFT de 8 puntos.  
+3. El pico estará en la posición 5, recuperando el símbolo.  
+
+---
+
+### 4. ¿Por qué Funciona?
+
+- **Ortogonalidad**: Las chirps con diferentes \( s(nT_s) \) son ortogonales.
+- **Robustez**: El barrido en frecuencia hace que FSCM sea resistente a canales selectivos (mejor que FSK).  
+
+---
+
+### Diagrama de Bloques Conceptual
+
+```
+Transmisor:
+Bits → Codificación (s(nT_s)) → Chirp Modulado → Canal
+
+Receptor:
+Señal Recibida × Down-Chirp → FFT → Detección de Pico → Símbolo Decodificado
+```
+
+Este proceso es la esencia de LoRa: bajo consumo, larga distancia y robustez gracias a la modulación chirp y la demodulación basada en FFT.
+
+---
+
+## Detalle sobre Oversampling y el parámetro delta en la modulación LoRa (FSCM)
+
+### ¿Qué es el oversampling (`samples_per_chirp`)?
+
+- **Oversampling** significa tomar más muestras por cada símbolo de las estrictamente necesarias.
+- En LoRa, cada símbolo tiene \( N_s = 2^{SF} \) posiciones posibles, pero si se desea una señal más suave o simular una mayor tasa de muestreo (como haría un DAC real), se pueden tomar varias muestras por cada "paso" de símbolo.
+- El parámetro `samples_per_chirp` indica **cuántas muestras se toman por cada paso de símbolo**.  
+  Ejemplo:  
+  Si \( SF=8 \), entonces \( N_s=256 \). Si `samples_per_chirp=4`, se generan \( 256 \times 4 = 1024 \) muestras por símbolo.
+
+### ¿Qué es `delta` y para qué sirve?
+
+- En el código, se define:
+  ```python
+  delta = 1 / samples_per_chirp
+  ```
+- `delta` es el **incremento fraccional** que se le suma al índice \( k \) en cada muestra.
+- Si no hubiera oversampling, \( k \) avanzaría de a 1 en cada muestra (es decir, \( k = s, s+1, s+2, ... \)).
+- Con oversampling, queremos que \( k \) avance más despacio:  
+  - Si `samples_per_chirp=4`, entonces para avanzar de un valor entero de \( k \) al siguiente, necesitamos 4 muestras, así que sumamos \( 1/4 \) en cada paso.
+- Así, \( k \) avanza de a `delta` en cada muestra, logrando el efecto de oversampling.
+
+**Resumen:**  
+- **`samples_per_chirp`**: lo define el usuario, según cuántas muestras quiera por símbolo (mayor valor = señal más suave y precisa).
+- **`delta`**: es el paso fraccional para que, al recorrer todas las muestras de un símbolo, \( k \) avance exactamente 1 unidad por cada `samples_per_chirp` muestras.
+
+---
+
+## Explicación detallada del codificador (modulador) y decodificador (demodulador) LoRa (FSCM)
+
+### 1. Codificador (Modulador)
+
+El proceso de modulación en LoRa convierte bits de información en una señal chirp con un desplazamiento de frecuencia inicial.
+
+#### a. Generación del Símbolo (\( s(nT_s) \))
+
+- **Entrada**: Un vector binario \( \mathbf{w}(nT_s) \) de longitud \( SF \) (Spreading Factor).  
+  - Ejemplo: Si \( SF = 8 \), se procesan 8 bits por símbolo (\( 2^8 = 256 \) valores posibles).  
+- **Cálculo del símbolo**:  
+  \[
+  s(nT_s) = \sum_{h=0}^{SF-1} \mathbf{w}(nT_s)_h \cdot 2^h
+  \]  
+  - Esto convierte los bits en un número entero entre \( 0 \) y \( 2^{SF} - 1 \).  
+  - Ejemplo: Para \( \mathbf{w} = [1, 0, 1, 1] \) (SF=4), \( s(nT_s) = 1 \cdot 2^0 + 0 \cdot 2^1 + 1 \cdot 2^2 + 1 \cdot 2^3 = 1 + 0 + 4 + 8 = 13 \).
+
+#### b. Generación de la Señal Chirp Modulada
+
+- **Duración del símbolo**: \( T_s = 2^{SF} \cdot T \), donde \( T = 1/B \) (tiempo de muestra).  
+- **Señal transmitida**:  
+  \[
+  c(nT_s + kT) = \frac{1}{\sqrt{2^{SF}}} e^{j2\pi \left[(s(nT_s) + k) \mod 2^{SF}\right] \frac{k}{2^{SF}}}
+  \]
+  - **Explicación**:  
+    1. **Desplazamiento inicial**: La frecuencia inicial de la chirp está determinada por \( s(nT_s) \).  
+    2. **Evolución en el tiempo**: La frecuencia aumenta linealmente con \( k \) (índice de tiempo), creando el barrido chirp.  
+    3. **Operación módulo \( 2^{SF} \)**: Garantiza que la señal "repita" su barrido dentro del ancho de banda \( B \).  
+
+- **Ejemplo visual**:  
+  - Si \( s(nT_s) = 3 \) y \( SF = 4 \), la chirp comienza en una frecuencia proporcional a 3 y barre hasta \( 2^4 = 16 \) pasos, luego "vuelve a empezar".  
+
+---
+
+### 2. Primeros Bloques del Decodificador (Demodulador)
+
+El demodulador debe recuperar el símbolo \( s(nT_s) \) a partir de la señal recibida \( r(nT_s + kT) \), que incluye ruido. Aquí los pasos clave:
+
+#### a. Señal Recibida
+
+\[
+r(nT_s + kT) = c(nT_s + kT) + w(nT_s + kT)
+\]  
+- \( w(nT_s + kT) \): Ruido blanco gaussiano (AWGN).
+
+#### b. Proyección sobre la Base de Señales
+
+El receptor óptimo calcula la correlación entre la señal recibida y todas las posibles señales chirp (una para cada \( s(nT_s) \)).  
+
+1. **Multiplicación por el "down-chirp"**:  
+   - Se multiplica \( r(nT_s + kT) \) por una chirp inversa:  
+     \[
+     d(nT_s + kT) = r(nT_s + kT) \cdot e^{-j2\pi \frac{k^2}{2^{SF}}}
+     \]  
+   - **Propósito**: Eliminar el barrido de frecuencia de la chirp, dejando solo el desplazamiento inicial \( s(nT_s) \).  
+
+2. **Transformada de Fourier (FFT)**:  
+   - Se aplica una FFT de \( 2^{SF} \) puntos a \( d(nT_s + kT) \):  
+     \[
+     D(q) = \sum_{k=0}^{2^{SF}-1} d(nT_s + kT) \cdot e^{-j2\pi \frac{qk}{2^{SF}}}
+     \]  
+   - **Resultado**:  
+     - Si no hay ruido, \( D(q) \) tendrá un pico en \( q = s(nT_s) \).  
+     - Con ruido, se elige el \( q \) que maximiza \( |D(q)| \).  
+
+3. **Decisión**:  
+   - El índice \( l \) del máximo de \( |D(q)| \) es el símbolo estimado:  
+     \[
+     \hat{s}(nT_s) = \arg\max_q |D(q)|
+     \]  
+
+---
+
+### 3. Ejemplo Numérico (Simplificado)
+
+Supongamos:  
+- \( SF = 3 \) (\( 8 \) símbolos posibles).  
+- Símbolo transmitido: \( s(nT_s) = 5 \).  
+
+#### En el Transmisor
+
+1. Se genera la chirp con desplazamiento inicial 5.  
+2. La señal barre frecuencias según:  
+   \[
+   \text{Frecuencia en } k = \left[(5 + k) \mod 8\right] \cdot \frac{B}{8}
+   \]  
+
+#### En el Receptor
+
+1. Se multiplica la señal recibida por el down-chirp \( e^{-j2\pi k^2 / 8} \).  
+2. Se aplica FFT de 8 puntos.  
+3. El pico estará en la posición 5, recuperando el símbolo.  
+
+---
+
+### 4. ¿Por qué Funciona?
+
+- **Ortogonalidad**: Las chirps con diferentes \( s(nT_s) \) son ortogonales.
+- **Robustez**: El barrido en frecuencia hace que FSCM sea resistente a canales selectivos (mejor que FSK).  
+
+---
+
+### Diagrama de Bloques Conceptual
+
+```
+Transmisor:
+Bits → Codificación (s(nT_s)) → Chirp Modulado → Canal
+
+Receptor:
+Señal Recibida × Down-Chirp → FFT → Detección de Pico → Símbolo Decodificado
+```
+
+Este proceso es la esencia de LoRa: bajo consumo, larga distancia y robustez gracias a la modulación chirp y la demodulación basada en FFT.
+
+---
