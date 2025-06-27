@@ -1,112 +1,58 @@
-# Trabajo practico integrado Comunicaciones digitales
+# La modulación LoRa
+## 0. Resumen: 
+Las redes de área extensa de baja potencia **(LPWAN)** están surgiendo como un nuevo paradigma, especialmente en el ámbito de la conectividad del Internet de las Cosas **(IoT)**. LoRa es una de las LPWAN y está ganando mucha popularidad comercial. La modulación subyacente a LoRa está patentada y nunca se ha descrito teóricamente. 
+El objetivo de esta carta es proporcionar la primera descripción rigurosa del procesamiento matemático de señales de los procesos de modulación y demodulación. 
+Asimismo, proporcionamos una derivación teórica del receptor óptimo que implica un proceso de demodulación de baja complejidad, utilizando la **Transformada Rápida de Fourier**. 
+A continuación, comparamos el rendimiento de la modulación LoRa y la modulación por desplazamiento de frecuencia, tanto en un canal aditivo de ruido blanco gaussiano (AWGN) como en un canal selectivo en frecuencia, demostrando la superioridad de la modulación LoRa en este último. 
+Los resultados de esta carta permitirán una evaluación más exhaustiva de las redes basadas en LoRa, mucho más rigurosa que la realizada hasta la fecha.
 
-Este trabajo práctico tiene como objetivo estudiar el funcionamiento del sistema de comunicación LoRaWAN el cual es una red de tipo LPWAN (Low Power Wide Area Network), la cual utiliza LoRa (Long Range) como su tecnología de modulación.
+## 1. Introduccion
 
-Una LPWAN es una red de telecomunicaciones diseñada específicamente para la comunicación de dispositivos que requieren cobertura de largo alcance y bajo consumo energético, características fundamentales en aplicaciones de Internet de las Cosas (IoT).
+Las redes de área amplia de alta potencia (LPWAN) están surgiendo como un nuevo paradigma, especialmente en el campo de Internet de las Cosas (IoT).
 
-Con el fin de analizar en profundidad este sistema, se propone la lectura y el estudio de dos artículos científicos:
-1. "Frequency Shift Chirp Modulation: The LoRa Modulation" – Lorenzo Vangelista
-2. "From Demodulation to Decoding: Toward Complete LoRa PHY Understanding and Implementation" – Zhenqiang Xu, Shuai Tong, Pengjin Xie y Jiliang Wang
+LoRa es una de las LPWAN y está ganando bastante terreno comercial. Estrictamente hablando, LoRa es la capa física del sistema LoRaWAN, cuya especificación es mantenida por la LoRa Alliance.
+La modulación LoRa está patentada y nunca se ha descrito teóricamente. La patente, de hecho, no proporciona los detalles, en términos de ecuaciones y procesamiento de señales. El artículo 5 ofrece una descripción general de la modulación LoRa, proporcionando algunas ecuaciones básicas y basándose en la intuición del lector para el proceso de decodificación. 
+Los artículos 6 y 7 profundizan en la descripción de la señal, la modulación y la demodulación, pero aún carecen de una definición matemática basada en la teoría de señales de los procesos de modulación y demodulación, en parte porque el análisis se limita al dominio analógico. 
+Por ejemplo, en [7] se dice que “Para una propagación factor $S$, $log_2(S)$ bits definen $f_0$ ”, es decir, el cambio de frecuencia inicial, pero no hay ninguna explicación de cómo se hace esto.
+De hecho, la modulación LoRa suele denominarse **«modulación de chirp»** . Un análisis detallado de LoRa revela que el elemento portador de información es el desplazamiento de frecuencia al inicio del símbolo, y el chirp es similar a una especie de portadora. Por esta razón, en nuestra opinión, LoRa se describe mejor como **Modulación de Chirp por Desplazamiento de Frecuencia (FSCM)**.
+El resto del artículo se organiza de la siguiente manera. En la Sección II, se describe el proceso de modulación e identifica la base de señales ortogonales que la caracterizan; en la Sección III, se describe el demodulador óptimo y su implementación eficiente mediante la Transformada Rápida de Fourier; en la Sección IV, se presentan los resultados de experimentos de simulación por computadora sobre el rendimiento a nivel de enlace, comparando también la modulación FSCM con una modulación por desplazamiento de frecuencia (FSK) con la misma cardinalidad. Finalmente, en la Sección V, se presentan las conclusiones del artículo.
 
-A partir del análisis de estos trabajos, se derivan los siguientes resultados y conclusiones sobre el sistema de modulación y funcionamiento de la capa física (PHY) en LoRaWAN.
+## 2. MODULACIÓN DE CHIRP POR DESPLAZAMIENTO DE FRECUENCIA
 
-## Codificador y Decodificador
+Supongamos que el ancho de banda del canal que utilizamos para la transmisión es **B** por lo que transmitimos una muestra cada $T=\frac{1}{B}$
 
-### 1. Codificador
-La codificación propuesta se realiza mediante el polinomio de numeración posicional en base 2. Para ello, se requiere la elección de un parámetro conocido como **_Spreading Factor_ ($SF$)**, el cual puede tomar los siguientes valores: $\{7,8,9,10,11,12\}$. Este parámetro representa la cantidad de dígitos binarios que conforman un símbolo.
+Un símbolo $s(n*T_s)$ se envía a la entrada del modulador cada $T_s = 2^{SF} * T$. El símbolo $s(n*T_s)$ es un número real formado utilizando un vector $w(n*T_s)$ de dígitos binarios $SF$, con $SF$ un parámetro entero llamado, en el contexto de LoRa, **Factor de Expansión** (que normalmente toma valores en ${7, 8, 9, 10,11, 12}$) es decir
 
-Para generar un símbolo, se utiliza la siguiente ecuación:
+$s(nT_s) = \sum_{h=0}^{SF-1} w(nT_s)_h .2^h$
 
-$$\Large s(nT_s) = \sum_{h=0}^{\text{SF}-1} \text{w}(nT_s)_h \cdot 2^h$$
+Podemos ver que $s(n*T_s)$ toma valores en {0, 1, 2,..., $2^{SF} − 1$}.
+La forma de onda transmitida, de duración Ts , para un cierto $s(n*T_s)$ es entonces:
 
-Donde:
-- $s(nT_s)$ Representa el simbolo resultante
-- $\text{w}(nT_s)_h$ Es el digito binario en la posicion $h$
-- $2^h$ Es el peso del digito binario, en funcion de la posicion del mismo
-- $T_s$ es el período de un símbolo
-- $n$ es el índice del símbolo que indica la posición temporal dentro de la secuencia.
+$c(nT_s+ kT) = \frac{1}{\sqrt{2^{SF}}} e^{j2\pi [(s(nT_s)+k)_{mod2^{SF}}]*\frac{k}{2^{SF}}}$
 
-Por ejemplo, si se tiene un $SF=8$ y se desea codificar el dato $[0\ 1\ 1\ 1\ 1\ 0\ 0\ 0]$:
+para k = 0 ... $2^{SF} − 1$.
 
-$$
-s(nT_s) = \sum_{h=0}^{7} \text{w}(nT_s)_h \cdot 2^h = 0 \times 2^7 + 1 \times 2^6 + 1 \times 2^5 + 1 \times 2^4 + 1 \times 2^3 + 0 \times 2^2 + 0 \times 2^1 + 0 \times 2^0 = 120
-$$
-
-### 2. Decodificador
-
-El proceso de decodificación consiste en recuperar la secuencia de bits original a partir del símbolo recibido. Esto se logra descomponiendo el valor decimal del símbolo en su representación binaria de $SF$ bits. Matemáticamente, se realiza la conversión inversa:
-
-Dado un símbolo $s(nT_s)$ y un $SF$ determinado, se obtiene el vector de bits $\text{w}(nT_s)_h$ tal que:
-
-$$
-s(nT_s) = \sum_{h=0}^{\text{SF}-1} \text{w}(nT_s)_h \cdot 2^h
-$$
-
-Por ejemplo, si se recibe el símbolo $s(nT_s) = 120$ y $SF = 8$, la representación binaria es:
-
-$$
-120_{10} = 01111000_2
-$$
-
-Por lo tanto, la secuencia de bits recuperada es $[0\ 1\ 1\ 1\ 1\ 0\ 0\ 0]$.
-
-## Conformador de onda y conformador de n-tuplas
-
-### 1. Conformador de onda
-
-El proximo paso en nuestro sistema de comunicacion es el conformador de onda o waveform former, el cual es la etapa posterior al codificador. Nuestro conformador de onda implementa la modulación **_Frequency Shift Chirp Modulation_ (FSCM)**.
-
-En esta modulación, cada símbolo se asocia a una frecuencia inicial determinada por su valor decimal $s(nT_s)$  A partir de esta frecuencia, la señal modulada presenta un barrido lineal en frecuencia (tipo chirp), donde la frecuencia incrementa linealmente con el tiempo, siguiendo el índice $k=0,1,...,2^{SF}-1$, hasta alcanzar un valor máximo de $2^{SF}$. 
-
-Luego, la frecuencia decae hasta 0 y vuelve a incrementarse, completando así una oscilación en frecuencia que regresa al valor inicial. Esta modulación al realizarse con una señal compleja, se compone de una componente real o fase (I) y otra componente imaginaria o cuadratura (Q). Esto se representa por la siguiente ecuacion: 
+Podemos ver que la señal modulada es una forma de onda de chirrido, ya que la frecuencia aumenta linealmente con k, que es el índice de tiempo; observamos que cada forma de onda difiere de una forma de onda base que tiene Frecuencia inicial igual a 0 por un desplazamiento de frecuencia $s(n*T_s)$. Por eso se denomina FCSM.
 
 
-$$\Large c(nT_s + kT) = \frac{1}{\sqrt{2^{SF}}} \cdot e^{j2\pi[(s(nT_s)+k)\cdot{\bmod{2^{SF}}}](kT\frac{B}{2^{SF}})}\quad k=0,...,2^{SF}-1$$
+Observamos que todo el análisis de la modulación FCSM en esta carta
+permanecerá en el dominio discreto Z(T) = {..., −3T, −2T, −T, 0,T, 2T, 3T,...}, es decir, el intervalo fundamental para el análisis de frecuencia es [0, $B = \frac{1}{T}$].
+De hecho, cualquier señal en el dominio discreto Z(T) tiene una representación
+de frecuencia periódica con período $B = \frac{1}{T}$. Por lo tanto, si uno prefiere tener la FCSM descrita en el intervalo de frecuencia [−B/2,B/2], por ejemplo,para tratar con la señal analítica, la base de señal (4) solo necesita ser multiplicada por $e^{-j2\pi \frac{B}{2}kT} = -1^k$ sin consecuencias en las derivaciones y hallazgos de
+la carta actual.
 
-En la misma: 
-- Toma un símbolo codificado $𝑠∈{0,1,...,2^{𝑆𝐹}−1}$
-- Lo inserta como un shift de frecuencia inicial en una señal chirp.
-- Genera una onda compleja cuya frecuencia aumenta linealmente en el tiempo (chirp) y comienza en una frecuencia determinada por **𝑠**.
+## 3. DETECCIÓN ÓPTIMA DE SEÑALES DE FSCM EN ADITIVOS 
+### CANALES DE RUIDO BLANCO GAUSSIANO (AWGN )
+.
+Dado que tenemos señales de energía iguales y suponemos que son perfectas sincronización de tiempo y frecuencia, así como una fuente que emite símbolos igualmente probables, el receptor óptimo para FSCM
 
-Aplicando la ecuación de **Euler** se llega a la siguiente expresión equivalente:
+Las señales en un canal AWGN se pueden derivar fácilmente de una descripcion. La señal recibida es: 
 
-$$c(nT_s + kT) = \frac{1}{\sqrt{2^{SF}}} \cdot \left[ \cos\left(2\pi \cdot \left((s(nT_s) + k) \bmod 2^{SF}\right) \cdot k\frac{T B}{2^{SF}}\right) + j \cdot \sin\left(2\pi \cdot \left((s(nT_s) + k) \bmod 2^{SF}\right) \cdot k\frac{T B}{2^{SF}}\right) \right] \quad k = 0, \dots, 2^{SF} - 1$$
-
-De este modo, se muestran claramente las dos partes ortogonales de la señal: la componente en fase, asociada al **coseno** (parte real), y la componente en cuadratura, asociada al **seno** (parte imaginaria)
-
-Analizando las ecuación se pueden observar:
+$r(nTs + kT ) \cong c(nTs + kT ) + w(nTs + kT )$
 
 
-- $k$ Es el indice de tiempo discreto que actua como contador haciendo que la frecuencia aumente linealmente.
-- La frecuencia inicial (cuando $k=0$) viene dado por el valor del simbolo $s(nT_s)$
-- El modulo de $(s(nT_s) + k)$ en base $2^{SF}$ ($(s(nT_s) + k) \bmod 2^{SF}$) tiene por fin limitar el crecimiento lineal de la frecuencia hasta un valor de frecuencia maximo $2^{SF}-1$ con el proposito de limitar el ancho de banda. Esta operacion genera un discontinuidad en la frecuencia haciendo que la misma caiga desde el valor maximo hasta $0$ para luego continuar creciendo hasta el valor inicial $s(nT_s)$ finalizando el periodo $T_s$ del simbolo.
-- El factor $\frac{1}{\sqrt{2^{SF}}}$ tiene por fin normalizar la potencia de la señal
-- El periodo de muestreo $\frac{TB}{2^{SF}}$
+donde $w(nTs + kT)$ es un ruido gaussiano blanco de media cero, con
+varianza independiente de (nTs + kT). ). El óptimo demodulador consiste en proyectar $r(nTs + kT)$ sobre las diferentes señales $c(nTs + kt )$ con $s(nTs) =q$ , q = 0 a $2^{SF}-1$ y eligiendo la señal c(nTs + kT) de manera que el módulo de la proyección es máximo ya que la mejor estimación de la señal transmitida.  Este proceso proporciona la mejor estimación sˆ(nTs ) = l de la señal transmitida s(nTs)
 
-### 2. Formador de ntuplas
 
-El formador de n-tuplas (o n-tuple former) es una etapa fundamental en la recepción de señales LoRa, ya que permite identificar el símbolo transmitido a partir de la señal recibida. Su función principal es correlacionar la señal recibida con todas las posibles formas de onda base (chirps) generadas por los diferentes símbolos posibles, para determinar cuál de ellas se encuentra presente en la señal.
-
-En la práctica, esto se realiza aplicando una proyección (producto interno) de la señal recibida $r(nT_s + kT)$ sobre cada una de las bases conjugadas $c^*(nT_s + kT)$ asociadas a los posibles valores de símbolo $q$. El símbolo detectado será aquel que maximice el valor absoluto de la correlación.
-
-Matemáticamente, la proyección se expresa como:
-
-$$\langle r(nT_s+kT),c(nT_s+kT)|_{s(nT_s)=q} \rangle$$
-
-$$=\sum_{k=0}^{2^{SF}-1}r(nT_s+kT)\, \cdot \, c^*(nT_s+kT)|_{s(nT_s)=q}$$
-
-Para simplificar el procesamiento, se suele realizar una operación de dechirping, que consiste en multiplicar la señal recibida por el conjugado de un chirp de referencia. Esto transforma la señal chirp en una señal de frecuencia constante, facilitando la detección mediante una transformada de Fourier discreta (DFT):
-
-$$d(nT_s + kT)=r(nT_s + kT) \cdot e^{-j2\pi \frac{k^2}{2^{\text{SF}}}}$$
-
-Luego, se calcula la DFT de $d(nT_s + kT)$:
-
-$$\sum_{k=0}^{2^{SF}-1}d(nT_s + kT)\, \cdot \,\frac{1}{\sqrt{2^{SF}}}e^{-j2\pi p k \frac{1}{2^{SF}}}$$
-
-El índice $p$ para el cual la DFT alcanza su máximo corresponde al símbolo transmitido. Así, el formador de n-tuplas permite recuperar el valor original del símbolo a partir de la señal recibida, aprovechando la ortogonalidad de los chirps generados por los diferentes símbolos.
-
-### 3. Symbol error rate
-
-El _Symbol Error Rate_ (SER), similar al BER, representa la proporción de simbolos recibidos con error respecto al total de simbolos transmitidos. Se calcula de la siguiente forma:
-
-$$SER=\frac{\text{número de simbolos erróneos}}{\text{total de simbolos transmitidos}}$$
+#### A. Implementación computacionalmente eficien
