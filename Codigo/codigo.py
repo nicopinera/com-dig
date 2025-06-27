@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from lora import Lora
 
 # Limpia la consola al iniciar el script
 os.system("cls")
