@@ -21,11 +21,7 @@ Se realizo un ejemplo del funcionamiento de ambas partes, su comparacion y el ca
 
 ## Segunda Parte: Diseño del Waveform Former - n-Tuple former
 
-Agregar a la Jupyter Notebook utilizada anteriormente, la implementación del **waveform Former** propuesto en la ecuación 2 del paper de Vangelista y su correspondiente **n-Tuple Former** descripto en la sección III. 
-Con el agregado de esta etapa el diseño debe permitir enviar una cantidad de bits múltiplo del Spreading Factor (SF). 
-El script debe permitir imprimir una parte de los símbolos transmitidos y los símbolos decodificados. 
-A la salida del n-Tuple former se debe calcular e imprimir la probabilidad de error de símbolo **(SER)**, entendiéndose como la relación entre la cantidad de símbolos errados sobre la cantidad de símbolos enviados. 
-Utilizar una celda de la Jupyter Notebook para desarrollar la matematica y/o lógica utilizada en el algoritmo propuesto por ud.
+En nuestra Jupyter Notebook, implementamos el **waveform former** y el **n-Tuple former** siguiendo el paper de Vangelista. El waveform former genera la señal chirp para cada símbolo usando la ecuación (2), vectorizando la operación con Numpy para máxima eficiencia. El n-Tuple former realiza la demodulación multiplicando la señal recibida por un downchirp y aplicando la FFT, detectando el símbolo como el índice del máximo de la FFT. Calculamos la tasa de error de símbolo (SER) y validamos que en canal ideal se obtiene SER=0, confirmando la correcta implementación. Todo el procesamiento se realizó evitando listas y utilizando operaciones vectorizadas.
 
 **Test:** Si el Waveform Former y el n-Tuple Former se encuentran bien diseñados, bajo esta condición de funcionamiento debe dar un SER=0, cualquiera sea la cantidad de bits generados. 
 
@@ -37,10 +33,11 @@ Utilizar una celda de la Jupyter Notebook para desarrollar la matematica y/o ló
 
 ## Tercera Parte: Implementación del ruido del Canal
 
-Incorporar en la Jupyter Notebook previamente utilizada la implementación del ruido AWGN (ruido aditivo blanco gaussiano) que introduce el canal de comunicaciones en la señal transmitida. 
-Este ruido debe ser generado aleatoriamente con una distribución de probabilidad gaussiana de media cero y varianza $σ2\sigma^2σ2$, determinada a partir de la relación señal-ruido (SNR) expresada en decibeles $(SNRdB_\text{dB}dB​)$ seleccionada. 
-La notebook resultante debe ser capaz de reproducir la curva de BER correspondiente al escenario Flat FSCM, cuyos parámetros se detallan en la Sección IV del paper de referencia. Realizar también la curva de SER correspondiente.
-Utilizar ademas una celda de la Jupyter Notebook para desarrollar la matematica, conceptualizar la teoría y/o lógica utilizada en el algoritmo propuesto por ud.
+En la notebook, agregamos ruido AWGN (ruido aditivo blanco gaussiano) a la señal transmitida. El ruido se genera con media cero y varianza calculada a partir del SNR deseado en dB, usando la relación:
+$$
+\sigma^2 = \frac{1}{2 \cdot SNR_\text{lineal}}
+$$
+donde $SNR_\text{lineal} = 10^{SNR_{dB}/10}$. Simulamos la transmisión para distintos valores de SNR y graficamos las curvas de BER y SER para el sistema LoRa bajo canal plano (flat), validando la robustez del sistema. Todo el procesamiento se realizó con Numpy y operaciones vectorizadas.
 
 **Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
 
@@ -50,10 +47,11 @@ Utilizar ademas una celda de la Jupyter Notebook para desarrollar la matematica,
 
 ## Cuarta Parte: Implementación de un canal selectivo en frecuencia
 
-Incorporar en la Jupyter Notebook previamente utilizada la implementación del canal selectivo en frecuencia $h(nT ) = √0.8δ(nT ) + √0.2δ(nT - T )$ propuesto por Vangelista en el paper de referencia. 
-La notebook resultante debe ser capaz de reproducir la curva de BER correspondiente al escenario Freq Sel FSCM, cuyos parámetros se detallan en la Sección IV del paper de referencia. Realizar también la curva de SER correspondiente.
-
-Utilizar ademas una celda de la Jupyter Notebook para desarrollar la matematica, conceptualizar la teoría y/o lógica utilizada en el algoritmo propuesto por ud.
+Implementamos el canal selectivo en frecuencia como:
+$$
+h(nT) = \sqrt{0.8}\,\delta(nT) + \sqrt{0.2}\,\delta(nT-T)
+$$
+En la notebook, aplicamos este canal mediante convolución discreta sobre la señal transmitida antes de sumar el ruido. Luego, repetimos la demodulación y el cálculo de BER/SER, obteniendo las curvas correspondientes para el escenario selectivo en frecuencia. Todo el procesamiento se realizó de forma vectorizada.
 
 **Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
 
@@ -74,3 +72,28 @@ Probar el sistema futilizando en los SDRs para el envío de mensajes cortos.
 Utilizar ademas una celda de la Jupyter Notebook para desarrollar la matematica, conceptualizar la teoría y/o lógica utilizada en el algoritmo propuesto por ud.
 
 **Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
+
+---
+
+## Información relevante y referencias
+
+- **Codificador/Decodificador:** Implementados según la ecuación (1) del paper, usando operaciones vectorizadas para conversión bits ↔ símbolos.
+- **Waveform Former/n-Tuple Former:** Basados en la ecuación (2) y la sección III del paper de Vangelista, con generación y demodulación chirp usando Numpy y FFT.
+- **Canal AWGN:** Ruido generado con distribución normal compleja, varianza ajustada por SNR.
+- **Canal selectivo:** Implementado por convolución discreta con la respuesta al impulso propuesta.
+- **Curvas BER/SER:** Calculadas y graficadas para ambos escenarios de canal, validando la robustez del sistema LoRa.
+
+### Ecuaciones clave
+
+- **Codificación símbolo:** $s(nT_s) = \sum_{h=0}^{SF-1} w(nT_s)_h \cdot 2^h$
+- **Waveform Former:** $c(nT_s + kT) = \frac{1}{\sqrt{2^{SF}}} e^{j2\pi \left[(s(nT_s) + k) \mod 2^{SF}\right] \frac{k}{2^{SF}}}$
+- **Demodulación (n-Tuple Former):** Downchirp $\cdot$ FFT, símbolo estimado por el máximo de la FFT.
+- **Canal selectivo:** $h(nT) = \sqrt{0.8}\,\delta(nT) + \sqrt{0.2}\,\delta(nT-T)$
+
+### Referencias
+
+- Vangelista, L. "Frequency Shift Chirp Modulation: The LoRa Modulation"
+- Xu, Z., Tong, S., Xie, P., Wang, J. "From Demodulation to Decoding: Toward Complete LoRa PHY Understanding and Implementation"
+- Apuntes y ejemplos de clase
+
+---
