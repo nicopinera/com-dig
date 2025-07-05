@@ -5,6 +5,72 @@ import os
 # Limpia la consola al iniciar el script
 os.system("cls")
 
+def conformador_de_onda(simbolos, SF, samples_per_chirp, B):
+    """
+    Genera la forma de onda aplicando FSCM para una secuencia de símbolos. 
+
+    Args:
+        simbolos (list): lista de símbolos codificados a ser modulados en forma de chirps.
+        SF (int): Spreading Factor
+        samples_per_chirp (int): muestras por chirp o factor de oversampling
+        B (int): Ancho de banda (Hz). 
+
+    Return:
+        Array (len(simbolos), total_muestras): Simbolos modulados en forma de chirps
+    """
+    Ns = 2**SF # Muestras por símbolo (cuando samples_per_chirp=1)
+    T = 1 / B # Duración de símbolo (segundos)
+    delta = 1 / samples_per_chirp # Paso de tiempo para oversampling
+    total_muestras = Ns * samples_per_chirp # Total de muestras por símbolo
+
+    simbolos_modulados = []
+    fmax = (Ns - 1) * B / Ns # Frecuencia máxima para el chirp, utilizado para aplicar el modulo de manera condicional
+    for s in simbolos:
+        chirp = np.zeros(total_muestras, dtype=complex)
+        k = s  
+
+        for n in range(total_muestras):
+            f = k * B / Ns
+            t = k * T
+            if f >= fmax: # Modulo de 2**SF
+                k -= Ns 
+                f = k * B / Ns # Calcula f para k=0
+            arg = f * t * 0.5 
+            sample = (1 / np.sqrt(Ns * samples_per_chirp)) * np.exp(1j * 2 * np.pi * arg)
+            chirp[n] = sample
+            k += delta
+
+        simbolos_modulados.append(chirp)
+
+    return np.array(simbolos_modulados)
+
+def conformador_de_onda(simbolos, SF, B=125e3):
+    """
+    Genera la forma de onda LoRa para una secuencia de símbolos.
+
+    Parámetros:
+    - simbolos: matriz unidimensional de enteros entre 0 y 2**SF - 1
+    - SF: Spreading Factor
+    - B: Ancho de banda (Hz), por defecto 125 kHz
+
+    Retorna:
+    - matriz de forma (len(simbolos), 2**SF) con los chirps generados
+    """
+    Ns = 2**SF # Muestras por simbolo
+    T = 1/B  # Periodo de muestreo
+    k = np.arange(Ns) # Arreglo de indices de muestras
+    
+    simbolos_modulados = []
+
+    for s in simbolos:
+        
+        arg = ((s + k) % Ns) * (k * T * B / Ns) # Obtiene el argumento de la exponencial compleja
+        chirp = (1 / np.sqrt(Ns)) * np.exp(1j * 2 * np.pi * arg) # Modula el simbolo
+        simbolos_modulados.append(chirp) # Agrega el simbolo modulado a la matriz
+
+    return np.array(simbolos_modulados)  # Matriz de salida (símbolos x muestras)
+
+
 ## Codificador y decodificador para la primera entrega
 
 # Generador de bits aleatorios
