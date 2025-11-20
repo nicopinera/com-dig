@@ -1,12 +1,15 @@
 # Comunicaciones Digitales - Trabajo Integrador
+
 Trabajo Integrador de Comunicaciones Digitales - UNC - Facultad de Ciencias Exactas Fisica y Naturales
 Alumnos:
+
 1. Krede, Julian
 2. Piñera, Nicolas
 
 ---
 
 ## Primera Parte: Diseño del Codificador-Decodificador
+
 Utilizando una Jupyter Notebook, generamos un array binario con distribucion uniforme el cual seran nuestros bits a transmitir, tiene una longitud multiplo del **SF (Spreading Factor)**
 
 Posteriormente implementamos el **codificador** que se muestra en la ecuacion (1) propuesta por Vangelista, donde se agrupa dentro de nuestro vector binario, grupos de bits cuyo tamaño es de **SF (Spreading Factor)**, luego se utiliza el polinomio de numeracion tomando cada bit y multiplicandolo por $2^ĥ$ siendo $h$ la posicion del bit.
@@ -23,7 +26,7 @@ Se realizo un ejemplo del funcionamiento de ambas partes, su comparacion y el ca
 
 En nuestra Jupyter Notebook, implementamos el **waveform former** y el **n-Tuple former** siguiendo el paper de Vangelista. El waveform former genera la señal chirp para cada símbolo usando la ecuación (2), vectorizando la operación con Numpy para máxima eficiencia. El n-Tuple former realiza la demodulación multiplicando la señal recibida por un downchirp y aplicando la FFT, detectando el símbolo como el índice del máximo de la FFT. Calculamos la tasa de error de símbolo (SER) y validamos que en canal ideal se obtiene SER=0, confirmando la correcta implementación. Todo el procesamiento se realizó evitando listas y utilizando operaciones vectorizadas.
 
-**Test:** Si el Waveform Former y el n-Tuple Former se encuentran bien diseñados, bajo esta condición de funcionamiento debe dar un SER=0, cualquiera sea la cantidad de bits generados. 
+**Test:** Si el Waveform Former y el n-Tuple Former se encuentran bien diseñados, bajo esta condición de funcionamiento debe dar un SER=0, cualquiera sea la cantidad de bits generados.
 
 **Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
 
@@ -63,7 +66,7 @@ A partir del Paper de referencia **"From Demodulation to Decoding: Toward Comple
 
 ![Imagen1](img/image4.png)
 
-y las etapas de Dechirping, Window Alignment, Peak Merging y clock Recovery en el receptor 
+y las etapas de Dechirping, Window Alignment, Peak Merging y clock Recovery en el receptor
 
 ![Imagen1](img/image5.png)
 
