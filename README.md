@@ -18,7 +18,7 @@ Nuestro **decodificador** fue implementado realizando las sucesivas divisiones p
 
 Se realizo un ejemplo del funcionamiento de ambas partes, su comparacion y el calculo del **BER** que se entiende como la relacion entre la cantidad de bits errados sobre la cantidad de bits enviados. En esta etapa al no estar incluido el ruido, este valor fue igual a $0%$
 
-![Imagen1](img/image1.png)
+![Imagen1](https://github.com/user-attachments/assets/31ecf1a7-321c-4eae-b0fc-4bae4595d368)
 
 ---
 
@@ -30,7 +30,7 @@ En nuestra Jupyter Notebook, implementamos el **waveform former** y el **n-Tuple
 
 **Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
 
-![Imagen1](img/image2.png)
+![Imagen1](https://github.com/user-attachments/assets/cfa1d79f-c1a5-4ba6-9e48-7fedce5bdb68)
 
 ---
 
@@ -44,7 +44,7 @@ donde $SNR_\text{lineal} = 10^{SNR_{dB}/10}$. Simulamos la transmisión para dis
 
 **Nota:** Para optimizar el rendimiento de las etapas a diseñar utilizar los recursos brindados por la biblioteca numpy, evitando utilizar listas.
 
-![Imagen1](img/image3.png)
+![Imagen1](https://github.com/user-attachments/assets/3d7abb8f-426f-4287-882c-0cb3f746db30)
 
 ---
 
@@ -64,11 +64,11 @@ En la notebook, aplicamos este canal mediante convolución discreta sobre la se�
 
 A partir del Paper de referencia **"From Demodulation to Decoding: Toward Complete LoRa PHY Understanding and Implementation"** implementar la transmisión de tramas LoRa en el transmisor
 
-![Imagen1](img/image4.png)
+![Imagen1](https://github.com/user-attachments/assets/c41dd4a1-3875-476c-93e6-6d9e0f03841c)
 
 y las etapas de Dechirping, Window Alignment, Peak Merging y clock Recovery en el receptor
 
-![Imagen1](img/image5.png)
+![Imagen1](https://github.com/user-attachments/assets/3f183028-e22e-4c90-804e-7eb645634e3b)
 
 Probar el sistema futilizando en los SDRs para el envío de mensajes cortos.
 
