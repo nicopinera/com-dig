@@ -1,5 +1,7 @@
 # Documentacion
+
 En este directorio se encuentra:
+
 - Paper de Lorenzo Vangelista (En ingles)
 - Paper de Lorenzo Vangelista (Traducido)
 - **infoTp.md**: El cual tiene apuntes de clases sobre el tp
