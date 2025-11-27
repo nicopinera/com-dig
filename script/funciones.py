@@ -33,7 +33,7 @@ def codificador(SF, bits_transmitidos):
     simbolos = np.zeros(numero_de_simbolos, dtype=int)
 
     # Sumatoria - Ecuacion 1
-    ## Simbolo i
+    ## Simbolo i - Toma de a paquetes de SF
     for i in range(numero_de_simbolos):
 
         # de 0 hasta SF-1
@@ -98,7 +98,7 @@ def graficar_histograma(simbolos_codificados):
         simbolos_codificados (list or array): Lista o array de símbolos codificados.
     """
     plt.figure(figsize=(14, 6))  # Aumenta el tamaño de la figura
-    bins = range(min(simbolos_codificados), max(simbolos_codificados) + 2)
+    bins = range(min(simbolos_codificados), max(simbolos_codificados)+2)
     plt.hist(simbolos_codificados, bins=bins, align='left', rwidth=0.85, color='skyblue', edgecolor='black')
     plt.xlabel('Símbolo', fontsize=16)
     plt.ylabel('Frecuencia', fontsize=16)
@@ -114,30 +114,25 @@ def conformador_de_onda(simbolos, SF, B=125e3):
     """
     Genera la forma de onda LoRa para una secuencia de símbolos usando la ecuación 2 o 3 del paper.
 
-    Parámetros:
+    Args:
     - simbolos: matriz unidimensional de enteros entre 0 y 2**SF - 1
     - SF: Spreading Factor
     - B: Ancho de banda (Hz), por defecto 125 kHz
 
-    Retorna:
+    Return:
     - matriz de forma (len(simbolos), 2**SF) con los chirps generados
     """
-    Ns = 2**SF  # Muestras por símbolo
-    k = np.arange(Ns)
-    Ts = Ns / B  # Duración de símbolo
+    M = 2 ** SF
+    k = np.arange(M)
+    waveform = np.zeros((len(simbolos), len(k)), dtype=complex)
 
-    simbolos_modulados = []
+    for i, simbolo in enumerate(simbolos):
+        fase = ((simbolo + k)) * (k) / M
+        chirp = (1 / np.sqrt(M)) * np.exp(1j * 2 * np.pi * fase)
+        waveform[i] = chirp
+    return waveform
 
-    for s in simbolos:
-        # Ecuación 2/3 del paper: chirp modulado en frecuencia
-        # s: símbolo, k: índice de muestra
-        # x_s[k] = exp(j*2*pi*( (k^2)/(2*Ns) + (s*k)/Ns ))
-        chirp = (1 / np.sqrt(Ns)) * np.exp(1j * 2 * np.pi * ( (k**2)/(2*Ns) + (s * k)/Ns ))
-        simbolos_modulados.append(chirp)
-
-    return np.array(simbolos_modulados)  # Matriz de salida (símbolos x muestras)
-
-def formador_de_ntuplas(simbolos_modulados, SF):
+def formador_de_ntuplas(simbolos_modulados, SF, B=125e3):
     """
     Recupera los símbolos modulados mediante FSCM y estima los símbolos transmitidos a partir de ellos.
 
@@ -148,10 +143,12 @@ def formador_de_ntuplas(simbolos_modulados, SF):
     Return:
         simbolos_estimados (list): Lista de símbolos estimados.
     """
-    Ns = 2**SF
-    k = np.arange(Ns)
+    
+    M = 2**SF  
+    k = np.arange(M)
+    fase = (k**2) / M
+    upchirp = (1 / np.sqrt(M)) * np.exp(1j * 2 * np.pi * fase)
     # Upchirp base para dechirp
-    upchirp = (1 / np.sqrt(Ns)) * np.exp(1j * 2 * np.pi * ( (k**2)/(2*Ns) ))
     dechirp = np.conj(upchirp)
 
     simbolos_estimados = []
@@ -161,7 +158,7 @@ def formador_de_ntuplas(simbolos_modulados, SF):
         r_dechirped = r * dechirp
         fft_out = np.fft.fft(r_dechirped)
         simbolo_estimado = int(np.argmax(np.abs(fft_out)))
-        simbolos_estimados.append(simbolo_estimado % Ns)
+        simbolos_estimados.append(simbolo_estimado)
 
     return simbolos_estimados
 
@@ -486,3 +483,123 @@ def simulaciones_de_canal(bits_tx,SF,B,min_snr_AWGN,max_snr_AWGN,min_snr_multipa
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+def build_tx_frame(simbolos_data, SF, preamble_len=8):
+    M  = 2**SF  
+    k = np.arange(M)
+    fase = (k**2) / M
+    upchirp = (1 / np.sqrt(M)) * np.exp(1j * 2 * np.pi * fase)
+    # Upchirp base para dechirp
+    dechirp = np.conj(upchirp)
+
+    # preámbulo: Np up-chirps
+    pre = np.tile(upchirp, preamble_len) #Repite el up-chirp 'preamble_len' veces
+
+    # SFD: 2 + 1/4 down-chirps (2.25)
+    sfd = np.concatenate([np.tile(dechirp, 2), dechirp[:M//4]]) #repite 2 veces el down-chirp y luego agrega un cuarto de down-chirp
+
+    # payload (matriz símbolos → vector)
+    payload = conformador_de_onda(simbolos_data,SF).flatten()          
+
+    trama = np.concatenate([pre, sfd, payload])
+
+    return trama
+
+def visualizar_estructura_trama(frame, simbolos_data, SF, preamble_len=8):
+
+    M = 2**SF
+
+    # Calcular longitudes de cada sección
+    len_preamble = preamble_len * M
+    len_sfd = int(2.25 * M)
+    len_payload = len(simbolos_data) * M
+    len_total = len_preamble + len_sfd + len_payload
+
+    # Índices de delimitación
+    idx_sfd_start = len_preamble
+    idx_payload_start = len_preamble + len_sfd
+
+    # Verificar longitud de la trama
+    print("ESTRUCTURA DE LA TRAMA LoRa")
+    print(f"SF = {SF}, M = {M}")
+    print(f"\nLongitudes esperadas:")
+    print(f"Preámbulo ({preamble_len} up-chirps): {len_preamble} muestras")
+    print(f"SFD (2.25 down-chirps):  {len_sfd} muestras")
+    print(f"Payload ({len(simbolos_data)} símbolos): {len_payload} muestras")
+    print(f"TOTAL: {len_total} muestras")
+    print(f"\nLongitud real de la trama: {len(frame)} muestras")
+    print(f"Diferencia: {len(frame) - len_total} muestras")
+    print(f"\nSímbolos del payload: {simbolos_data}")
+
+    # GRÁFICO 1: Estructura temporal completa (parte real) 
+    fig, ax = plt.subplots(figsize=(15, 4))
+
+    t = np.arange(len(frame))
+    ax.plot(t, np.real(frame), linewidth=0.5, color='blue', alpha=0.7)
+
+    # Marcadores verticales
+    ax.axvline(idx_sfd_start, color='red', linestyle='--', linewidth=2, label='Inicio SFD')
+    ax.axvline(idx_payload_start, color='green', linestyle='--', linewidth=2, label='Inicio Payload')
+
+    # Sombreado de regiones
+    ax.axvspan(0, idx_sfd_start, alpha=0.2, color='cyan', label='Preámbulo')
+    ax.axvspan(idx_sfd_start, idx_payload_start, alpha=0.2, color='yellow', label='SFD')
+    ax.axvspan(idx_payload_start, len(frame), alpha=0.2, color='lightgreen', label='Payload')
+
+    ax.set_xlabel('Muestras')
+    ax.set_ylabel('Amplitud (Parte Real)')
+    ax.set_title('Estructura Completa de la Trama LoRa')
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='upper right')
+    plt.tight_layout()
+    plt.show()
+
+    # GRÁFICO 2: Frecuencia instantánea de toda la trama 
+    fase = np.unwrap(np.angle(frame))
+    frec_inst = np.diff(fase) / (2 * np.pi)
+
+    fig, ax = plt.subplots(figsize=(15, 5))
+
+    t_frec = np.arange(len(frec_inst))
+    ax.plot(t_frec, frec_inst, linewidth=0.8, color='darkblue')
+
+    # Marcadores verticales
+    ax.axvline(idx_sfd_start, color='red', linestyle='--', linewidth=2, label='Inicio SFD')
+    ax.axvline(idx_payload_start, color='green', linestyle='--', linewidth=2, label='Inicio Payload')
+
+    # Sombreado de regiones
+    ax.axvspan(0, idx_sfd_start, alpha=0.15, color='cyan')
+    ax.axvspan(idx_sfd_start, idx_payload_start, alpha=0.15, color='yellow')
+    ax.axvspan(idx_payload_start, len(frame), alpha=0.15, color='lightgreen')
+
+    # Anotaciones
+    ax.text(len_preamble/2, ax.get_ylim()[1]*0.9, 'PREÁMBULO\n(up-chirps)', ha='center', va='top', fontsize=10, bbox=dict(boxstyle='round', facecolor='cyan', alpha=0.5))
+    ax.text(idx_sfd_start + len_sfd/2, ax.get_ylim()[1]*0.9, 'SFD\n(down-chirps)', ha='center', va='top', fontsize=10, bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.5))
+    ax.text(idx_payload_start + len_payload/2, ax.get_ylim()[1]*0.9, 'PAYLOAD\n(datos)', ha='center', va='top', fontsize=10, bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.5))
+
+    ax.set_xlabel('Muestras')
+    ax.set_ylabel('Frecuencia Normalizada [ciclos/muestra]')
+    ax.set_title('Frecuencia Instantánea - Verificación de Estructura LoRa')
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc='upper right')
+    plt.tight_layout()
+    plt.show()
+
+def cortar_en_chirps(trama, SF):
+    M = 2**SF
+    num_chirps = len(trama) // M
+    chirps = trama[:num_chirps*M]    # recorta exceso
+    return chirps.reshape(num_chirps, M)
+
+def extraer_payload_chirps(trama, SF, preamble_len=8):
+    M = 2**SF
+    
+    # Cortar la trama en chirps completos
+    chirps = cortar_en_chirps(trama, SF)
+    
+    # Índices
+    idx_pre_end = preamble_len
+    idx_sfd_end = idx_pre_end + 2  # solo chirps completos (ignorar el 0.25)
+
+    payload = chirps[idx_sfd_end:]
+    return payload
