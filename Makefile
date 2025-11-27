@@ -15,9 +15,7 @@ python:
 	@echo "Entorno virtual creado."
 
 # Activar el entorno virtual e instalar dependencias
-install:
-	@$(PYTHON) -m venv venv && \
-	$(ENV_ACTIVATE) && \
-	$(PYTHON) -m pip install --upgrade pip && \
-	$(PYTHON) -m pip install -r requerimientos.txt
+install: python
+	@$(PIP) install --upgrade pip && \
+	$(PIP) install -r requerimientos.txt
 	@echo "Dependencias instaladas."
