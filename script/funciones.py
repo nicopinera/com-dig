@@ -506,12 +506,21 @@ def build_tx_frame(simbolos_data, SF, preamble_len=8):
     return trama
 
 def visualizar_estructura_trama(frame, simbolos_data, SF, preamble_len=8):
+    """
+    Visualiza la estructura de una trama LoRa, mostrando las secciones de preámbulo, SFD y payload,
+    tanto en el dominio temporal como en la frecuencia instantánea.
 
-    M = 2**SF
+    Args:
+        frame (array): Trama LoRa completa.
+        simbolos_data (array): Símbolos de datos (payload).
+        SF (int): Spreading Factor.
+        preamble_len (int): Longitud del preámbulo en chirps (por defecto 8).
+    """
+    M = 2**SF  # Número de muestras por chirp (dependiente de SF)
 
     # Calcular longitudes de cada sección
     len_preamble = preamble_len * M
-    len_sfd = int(2.25 * M)
+    len_sfd = int(2.25 * M)  # SFD: 2.25 chirps
     len_payload = len(simbolos_data) * M
     len_total = len_preamble + len_sfd + len_payload
 
@@ -520,50 +529,61 @@ def visualizar_estructura_trama(frame, simbolos_data, SF, preamble_len=8):
     idx_payload_start = len_preamble + len_sfd
 
     # Verificar longitud de la trama
-    print("ESTRUCTURA DE LA TRAMA LoRa")
+    print("---" * 10)
+    print("ESTRUCTURA TEORICA DE LA TRAMA LoRa")
     print(f"SF = {SF}, M = {M}")
+    print("---" * 10)
     print(f"\nLongitudes esperadas:")
     print(f"Preámbulo ({preamble_len} up-chirps): {len_preamble} muestras")
     print(f"SFD (2.25 down-chirps):  {len_sfd} muestras")
     print(f"Payload ({len(simbolos_data)} símbolos): {len_payload} muestras")
     print(f"TOTAL: {len_total} muestras")
+    print("---" * 10)
+    print("ESTRUCTURA REAL DE LA TRAMA LoRa")
     print(f"\nLongitud real de la trama: {len(frame)} muestras")
     print(f"Diferencia: {len(frame) - len_total} muestras")
     print(f"\nSímbolos del payload: {simbolos_data}")
+    print("---" * 10)
 
-    # GRÁFICO 1: Estructura temporal completa (parte real) 
+    # GRÁFICO 1: Estructura temporal completa (parte real)
     fig, ax = plt.subplots(figsize=(15, 4))
+    fig.patch.set_facecolor('black')  # Fondo negro para toda la figura
+    ax.set_facecolor('black')  # Fondo negro para el área del gráfico
 
-    t = np.arange(len(frame))
-    ax.plot(t, np.real(frame), linewidth=0.5, color='blue', alpha=0.7)
+    t = np.arange(len(frame))  # Vector de tiempo
+    ax.plot(t, np.real(frame), linewidth=1.5, color='blue')  # Parte real de la trama
 
-    # Marcadores verticales
-    ax.axvline(idx_sfd_start, color='red', linestyle='--', linewidth=2, label='Inicio SFD')
-    ax.axvline(idx_payload_start, color='green', linestyle='--', linewidth=2, label='Inicio Payload')
+    # Marcadores verticales para las secciones
+    ax.axvline(idx_sfd_start, color='red', linestyle=':', linewidth=2, label='Inicio SFD')
+    ax.axvline(idx_payload_start, color='green', linestyle=':', linewidth=2, label='Inicio Payload')
 
     # Sombreado de regiones
-    ax.axvspan(0, idx_sfd_start, alpha=0.2, color='cyan', label='Preámbulo')
-    ax.axvspan(idx_sfd_start, idx_payload_start, alpha=0.2, color='yellow', label='SFD')
-    ax.axvspan(idx_payload_start, len(frame), alpha=0.2, color='lightgreen', label='Payload')
+    ax.axvspan(0, idx_sfd_start, alpha=0.4, color='cyan', label='Preámbulo')
+    ax.axvspan(idx_sfd_start, idx_payload_start, alpha=0.4, color='yellow', label='SFD')
+    ax.axvspan(idx_payload_start, len(frame), alpha=0.4, color='lightgreen', label='Payload')
 
-    ax.set_xlabel('Muestras')
-    ax.set_ylabel('Amplitud (Parte Real)')
-    ax.set_title('Estructura Completa de la Trama LoRa')
+    # Etiquetas y título
+    ax.set_xlabel('Muestras', color='white')
+    ax.set_ylabel('Amplitud (Parte Real)', color='white')
+    ax.set_title('Estructura Completa de la Trama LoRa', color='white')
     ax.grid(True, alpha=0.3)
-    ax.legend(loc='upper right')
+    ax.legend(loc='upper right', facecolor='black', edgecolor='white', labelcolor='white')
+    ax.tick_params(colors='white')  # Cambiar color de los ejes
     plt.tight_layout()
     plt.show()
 
-    # GRÁFICO 2: Frecuencia instantánea de toda la trama 
-    fase = np.unwrap(np.angle(frame))
-    frec_inst = np.diff(fase) / (2 * np.pi)
+    # GRÁFICO 2: Frecuencia instantánea de toda la trama
+    fase = np.unwrap(np.angle(frame))  # Desenvuelve la fase
+    frec_inst = np.diff(fase) / (2 * np.pi)  # Calcula la frecuencia instantánea
 
     fig, ax = plt.subplots(figsize=(15, 5))
+    fig.patch.set_facecolor('black')  # Fondo negro para toda la figura
+    ax.set_facecolor('black')  # Fondo negro para el área del gráfico
 
-    t_frec = np.arange(len(frec_inst))
-    ax.plot(t_frec, frec_inst, linewidth=0.8, color='darkblue')
+    t_frec = np.arange(len(frec_inst))  # Vector de tiempo para frecuencia instantánea
+    ax.plot(t_frec, frec_inst, linewidth=1, color='blue')  # Frecuencia instantánea
 
-    # Marcadores verticales
+    # Marcadores verticales para las secciones
     ax.axvline(idx_sfd_start, color='red', linestyle='--', linewidth=2, label='Inicio SFD')
     ax.axvline(idx_payload_start, color='green', linestyle='--', linewidth=2, label='Inicio Payload')
 
@@ -572,16 +592,21 @@ def visualizar_estructura_trama(frame, simbolos_data, SF, preamble_len=8):
     ax.axvspan(idx_sfd_start, idx_payload_start, alpha=0.15, color='yellow')
     ax.axvspan(idx_payload_start, len(frame), alpha=0.15, color='lightgreen')
 
-    # Anotaciones
-    ax.text(len_preamble/2, ax.get_ylim()[1]*0.9, 'PREÁMBULO\n(up-chirps)', ha='center', va='top', fontsize=10, bbox=dict(boxstyle='round', facecolor='cyan', alpha=0.5))
-    ax.text(idx_sfd_start + len_sfd/2, ax.get_ylim()[1]*0.9, 'SFD\n(down-chirps)', ha='center', va='top', fontsize=10, bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.5))
-    ax.text(idx_payload_start + len_payload/2, ax.get_ylim()[1]*0.9, 'PAYLOAD\n(datos)', ha='center', va='top', fontsize=10, bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.5))
+    # Anotaciones para cada sección
+    ax.text(len_preamble / 2, ax.get_ylim()[1] * 0.9, 'PREÁMBULO\n(up-chirps)', ha='center', va='top', fontsize=10,
+            bbox=dict(boxstyle='round', facecolor='cyan', alpha=0.5))
+    ax.text(idx_sfd_start + len_sfd / 2, ax.get_ylim()[1] * 0.9, 'SFD\n(down-chirps)', ha='center', va='top', fontsize=10,
+            bbox=dict(boxstyle='round', facecolor='yellow', alpha=0.5))
+    ax.text(idx_payload_start + len_payload / 2, ax.get_ylim()[1] * 0.9, 'PAYLOAD\n(datos)', ha='center', va='top',
+            fontsize=10, bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.5))
 
-    ax.set_xlabel('Muestras')
-    ax.set_ylabel('Frecuencia Normalizada [ciclos/muestra]')
-    ax.set_title('Frecuencia Instantánea - Verificación de Estructura LoRa')
+    # Etiquetas y título
+    ax.set_xlabel('Muestras', color='white')
+    ax.set_ylabel('Frecuencia Normalizada [ciclos/muestra]', color='white')
+    ax.set_title('Frecuencia Instantánea - Verificación de Estructura LoRa', color='white')
     ax.grid(True, alpha=0.3)
-    ax.legend(loc='upper right')
+    ax.legend(loc='upper right', facecolor='black', edgecolor='white', labelcolor='white')
+    ax.tick_params(colors='white')  # Cambiar color de los ejes
     plt.tight_layout()
     plt.show()
 
