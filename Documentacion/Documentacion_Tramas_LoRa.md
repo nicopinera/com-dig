@@ -15,15 +15,14 @@ El preámbulo es una secuencia de **up-chirps base** (típicamente 8) que cumple
 - **Detección de Energía**: Establece un nivel de referencia
 
 **Características técnicas:**
+
 - Consiste en `Np` up-chirps base (por defecto 8)
 - Cada up-chirp corresponde al símbolo `s = 0`
 - Señal matemática:
 
-```
-c_base(k) = (1/√M) * exp(j2π * k²/M)  para k = 0, 1, ..., M-1
-```
-
-donde `M = 2^SF` (número de muestras por chirp).
+$$
+c_{base}(k) = \frac{1}{\sqrt{2^{SF}}} \cdot e^{j  \cdot  2\pi \cdot \frac{k^2}{2^{SF}}} \text{Para k = 0, 1, ..., } 2^{SF}
+$$
 
 #### 1.2 SFD (Start Frame Delimiter)
 
@@ -35,11 +34,12 @@ El SFD actúa como **marcador de inicio** de los datos:
   - 1/4 de down-chirp adicional
 - **Señal**: Down-chirp = conjugado del up-chirp
 
-**Total de muestras del SFD**: `2.25 × M = 2M + M/4`
+**Total de muestras del SFD**: $2.25 \cdot 2^{SF} = 2 \cdot 2^{SF} + \frac{2^{SF}}{4}$
 
 #### 1.3 Símbolos de Datos (Payload)
 
 Los símbolos de datos contienen la información útil:
+
 - PHY Header (en modo explícito)
 - Payload (datos del usuario)
 - CRC (opcional)
@@ -51,6 +51,7 @@ Los símbolos de datos contienen la información útil:
 El paper identifica un problema fundamental en la demodulación LoRa:
 
 **Problema**: Cuando un chirp LoRa tiene un cambio de frecuencia (de máximo a mínimo), existe una **desalineación de fase inevitable** entre los dos segmentos del chirp. Esta desalineación:
+
 - Es causada por inestabilidades del hardware
 - Está distribuida aleatoriamente entre 0 y 2π
 - Produce **distorsión severa** de los picos de energía en FFT
@@ -73,6 +74,7 @@ Se debe alinear con precisión la ventana de demodulación con cada símbolo:
 El paper propone un enfoque basado en **oversampling** para resolver la desalineación de fase:
 
 **Concepto clave**: Cada símbolo LoRa modulado consiste en dos segmentos de chirp:
+
 - Segmento 1: frecuencia inicial `f₀`
 - Segmento 2: frecuencia inicial `f₀ - B`
 
@@ -109,6 +111,7 @@ Método alternativo de menor costo computacional:
 **Observación clave**: La amplitud del pico es proporcional a la energía del segmento de chirp.
 
 **Método**:
+
 - Sumar directamente las **amplitudes absolutas** (no valores complejos) de ambos picos
 - El pico resultante tiene la misma altura que el pico IDEAL
 - **Ventaja**: Muy bajo costo computacional
@@ -123,10 +126,12 @@ SER = P(h_d < h_n)
 ```
 
 donde:
+
 - `h_d`: altura del pico del símbolo objetivo
 - `h_n`: altura máxima del pico de ruido
 
 **Resultados teóricos**:
+
 - FPA y CPA tienen rendimiento muy cercano a IDEAL para SF12
 - LoRa puede funcionar con SNR extremadamente bajo (-20 dB)
 - CPA en SF8 tiene ligera degradación comparado con FPA
@@ -138,6 +143,7 @@ Para mejorar la estimación de frecuencia:
 **Problema**: La DFT tiene resolución de frecuencia limitada (muestras discretas).
 
 **Solución**: Zero-padding en el dominio del tiempo
+
 - Equivalente a interpolación en el dominio de la frecuencia
 - Mejora significativa la estimación del pico
 - **Recomendación**: Zero-padding de 4× (balance entre overhead computacional y sensibilidad)
@@ -191,7 +197,7 @@ El desplazamiento estimado de bin entre símbolos consecutivos:
 
 **Propósito**: Construir una trama LoRa completa según especificación estándar.
 
-#### Código Completo:
+#### Código Completo
 
 ```python
 def build_tx_frame(simbolos_data, SF, preamble_len=8):
@@ -213,11 +219,12 @@ def build_tx_frame(simbolos_data, SF, preamble_len=8):
     return trama
 ```
 
-#### Explicación Línea por Línea:
+#### Explicación Línea por Línea
 
 ```python
 def build_tx_frame(simbolos_data, SF, preamble_len=8):
 ```
+
 - **Parámetros de entrada**:
   - `simbolos_data`: Array de símbolos enteros (0 a 2^SF-1) que representan los datos a transmitir
   - `SF`: Spreading Factor (7-12)
@@ -226,6 +233,7 @@ def build_tx_frame(simbolos_data, SF, preamble_len=8):
 ```python
     M  = 2**SF
 ```
+
 - Calcula `M`: número de muestras por chirp
 - Para SF=7: M=128, SF=8: M=256, ..., SF=12: M=4096
 - Este es el número de puntos discretos que representan un chirp completo
@@ -233,6 +241,7 @@ def build_tx_frame(simbolos_data, SF, preamble_len=8):
 ```python
     up = upchirp(SF, 1, 1)
 ```
+
 - Genera un **up-chirp base** (símbolo s=0)
 - Parámetros: SF, T=1, Bw=1
 - Este chirp tiene frecuencia que aumenta linealmente de 0 a Bw
@@ -241,6 +250,7 @@ def build_tx_frame(simbolos_data, SF, preamble_len=8):
 ```python
     down = downchirp(SF,1 ,1)
 ```
+
 - Genera un **down-chirp** (conjugado del up-chirp)
 - Frecuencia disminuye linealmente de Bw a 0
 - Usado para el SFD (Start Frame Delimiter)
@@ -248,6 +258,7 @@ def build_tx_frame(simbolos_data, SF, preamble_len=8):
 ```python
     pre = np.tile(up, preamble_len)
 ```
+
 - **Construcción del preámbulo**
 - `np.tile`: repite el up-chirp base `preamble_len` veces
 - Si preamble_len=8 y M=128, el preámbulo tiene 8×128 = 1024 muestras
@@ -256,6 +267,7 @@ def build_tx_frame(simbolos_data, SF, preamble_len=8):
 ```python
     sfd = np.concatenate([np.tile(down, 2), down[:M//4]])
 ```
+
 - **Construcción del SFD (Start Frame Delimiter)**
 - `np.tile(down, 2)`: dos down-chirps completos (2M muestras)
 - `down[:M//4]`: primer cuarto del down-chirp (M/4 muestras)
@@ -265,6 +277,7 @@ def build_tx_frame(simbolos_data, SF, preamble_len=8):
 ```python
     payload = waveform_former(simbolos_data, SF, 1, 1).flatten()
 ```
+
 - **Construcción del payload**
 - `waveform_former`: genera chirps modulados para cada símbolo en `simbolos_data`
 - Retorna matriz de dimensión (N_simbolos × M) donde cada fila es un chirp
@@ -274,6 +287,7 @@ def build_tx_frame(simbolos_data, SF, preamble_len=8):
 ```python
     trama = np.concatenate([pre, sfd, payload])
 ```
+
 - **Concatenación final**
 - Une las tres partes en orden: preámbulo → SFD → payload
 - Estructura completa del paquete LoRa según estándar
@@ -282,6 +296,7 @@ def build_tx_frame(simbolos_data, SF, preamble_len=8):
 ```python
     return trama
 ```
+
 - Retorna el vector de señal complejo que representa la trama LoRa completa
 - Lista para ser transmitida a través del canal
 
@@ -293,7 +308,7 @@ def build_tx_frame(simbolos_data, SF, preamble_len=8):
 
 **Propósito**: Visualizar diferentes representaciones de una trama LoRa.
 
-#### Código Completo:
+#### Código Completo
 
 ```python
 def plot_trama(frame, SF, muestras=3000):
@@ -332,11 +347,12 @@ def plot_trama(frame, SF, muestras=3000):
     plt.show()
 ```
 
-#### Explicación Línea por Línea:
+#### Explicación Línea por Línea
 
 ```python
 def plot_trama(frame, SF, muestras=3000):
 ```
+
 - **Parámetros**:
   - `frame`: vector complejo de la trama generada (salida de `build_tx_frame`)
   - `SF`: Spreading Factor
@@ -346,6 +362,7 @@ def plot_trama(frame, SF, muestras=3000):
     M = 2**SF
     N = 2*M
 ```
+
 - `M`: muestras por chirp
 - `N`: factor de oversampling 2× (2M muestras)
 - Usado para indexar correctamente la señal
@@ -353,6 +370,7 @@ def plot_trama(frame, SF, muestras=3000):
 ```python
     plt.plot(np.real(frame[8*N:9*N]), label="Parte Real")
 ```
+
 - **Selección de ventana**: `frame[8*N:9*N]`
   - `8*N`: comienza después del preámbulo (típicamente 8 chirps)
   - `9*N`: toma un chirp completo con oversampling 2×
@@ -362,6 +380,7 @@ def plot_trama(frame, SF, muestras=3000):
 ```python
     fase = np.unwrap(np.angle(frame[8*N:9*N]))
 ```
+
 - `np.angle()`: calcula la fase instantánea de la señal compleja
 - `np.unwrap()`: **elimina discontinuidades de 2π** en la fase
   - Sin unwrap: la fase salta de +π a -π
@@ -371,6 +390,7 @@ def plot_trama(frame, SF, muestras=3000):
 ```python
     frec = np.diff(fase) / (2 * np.pi)
 ```
+
 - **Cálculo de frecuencia instantánea**
 - `np.diff(fase)`: diferencia entre muestras consecutivas de fase (derivada discreta)
 - División por `2π`: normalización para convertir radianes/muestra a ciclos/muestra
@@ -381,6 +401,7 @@ def plot_trama(frame, SF, muestras=3000):
 ```python
     plt.plot(np.arange(len(frec)), frec)
 ```
+
 - Grafica frecuencia instantánea vs índice de muestra
 - Para un up-chirp: debería verse una línea con pendiente positiva
 - Para un down-chirp: pendiente negativa
@@ -394,7 +415,7 @@ def plot_trama(frame, SF, muestras=3000):
 
 **Propósito**: Realizar dechirping con oversampling 2× y método CPA (Coarse Phase Alignment).
 
-#### Código Completo:
+#### Código Completo
 
 ```python
 def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
@@ -426,11 +447,12 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
     return (peak_value, peak_bin)
 ```
 
-#### Explicación Línea por Línea:
+#### Explicación Línea por Línea
 
 ```python
 def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
 ```
+
 - **Parámetros**:
   - `sig`: señal recibida completa
   - `start_idx`: índice de inicio de la ventana de análisis
@@ -444,6 +466,7 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
     M_local = 2**SF
     sample_num = 2 * M_local  # Oversampling 2x
 ```
+
 - `M_local`: muestras por chirp a frecuencia Bw
 - `sample_num`: muestras con **oversampling 2×**
 - Según el paper (página 7): "señal muestreada a 2*Bw"
@@ -453,6 +476,7 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
     up_ref = upchirp_2x(SF)
     down_ref = downchirp_2x(SF)
 ```
+
 - Genera chirps de referencia con oversampling 2×
 - `upchirp_2x`: fase `k²/(2M)` para `k=0..2M-1`
 - `downchirp_2x`: conjugado del up-chirp
@@ -463,6 +487,7 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
     else:
         ref = up_ref
 ```
+
 - **Principio de dechirping**:
   - Para detectar **up-chirp**: multiplicar por **down-chirp**
   - Para detectar **down-chirp**: multiplicar por **up-chirp**
@@ -472,12 +497,14 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
     if start_idx + sample_num > len(sig):
         return (0, 0)  # Fuera de rango
 ```
+
 - **Validación de límites**: verifica que hay suficientes muestras disponibles
 - Si no hay suficientes muestras, retorna valores nulos
 
 ```python
     chirp_segment = sig[start_idx:start_idx+sample_num]
 ```
+
 - **Extracción de ventana**: toma un segmento de `sample_num` muestras
 - Representa potencialmente un chirp completo
 - Ventana debe estar alineada con símbolo (importancia del window alignment)
@@ -485,11 +512,14 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
 ```python
     dechirped = chirp_segment * ref
 ```
+
 - **Operación de dechirping**: multiplicación punto a punto
 - Matemáticamente (para up-chirp):
+
   ```
   r(k) * exp(-j2π * k²/(2M))
   ```
+
 - Convierte chirp modulado en tono de frecuencia constante
 - La frecuencia del tono resultante codifica el símbolo transmitido
 
@@ -497,6 +527,7 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
     fft_len = sample_num * zero_padding_ratio
     ft = np.fft.fft(dechirped, fft_len)
 ```
+
 - **FFT con zero-padding**:
   - Longitud de FFT: `2M × 10 = 20M` (para zero_padding_ratio=10)
   - Zero-padding equivale a interpolación en frecuencia
@@ -506,6 +537,7 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
 ```python
     ft_mag = np.abs(ft)
 ```
+
 - **Método CPA (Coarse Phase Alignment)**:
   - Usa solo la **magnitud** (valor absoluto) de la FFT
   - Ignora la fase compleja
@@ -516,6 +548,7 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
     peak_bin = np.argmax(ft_mag)
     peak_value = ft_mag[peak_bin]
 ```
+
 - `np.argmax()`: encuentra índice del **pico máximo** de magnitud
 - `peak_bin`: índice de frecuencia (bin) del pico
 - `peak_value`: altura del pico (relacionada con SNR)
@@ -526,6 +559,7 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
 ```python
     return (peak_value, peak_bin)
 ```
+
 - Retorna tupla: `(amplitud_pico, índice_bin)`
 - Información usada para:
   - Detección de preámbulo (valor consistente)
@@ -540,7 +574,7 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
 
 **Propósito**: Detectar el preámbulo LoRa buscando una secuencia de up-chirps consistentes.
 
-#### Código Completo:
+#### Código Completo
 
 ```python
 def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
@@ -576,11 +610,12 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
     return -1  # No se detectó preámbulo
 ```
 
-#### Explicación Línea por Línea:
+#### Explicación Línea por Línea
 
 ```python
 def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
 ```
+
 - **Parámetros**:
   - `sig`: señal recibida completa
   - `preamble_len`: número esperado de up-chirps en el preámbulo (típicamente 8)
@@ -591,6 +626,7 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
     sample_num = 2 * M  # Oversampling 2x
     bin_num = M * zero_padding_ratio
 ```
+
 - `M`: muestras por chirp base
 - `sample_num`: muestras por chirp con oversampling 2×
 - `bin_num`: número total de bins en FFT con zero-padding
@@ -600,6 +636,7 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
     ii = 0
     pk_bin_list = []
 ```
+
 - `ii`: índice de ventana deslizante (sliding window)
 - `pk_bin_list`: lista para almacenar bins de pico detectados consecutivos
 - **Estrategia**: ventana deslizante que busca secuencia consistente
@@ -607,6 +644,7 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
 ```python
     while (ii < len(sig) - sample_num * preamble_len):
 ```
+
 - **Bucle principal**: recorre toda la señal
 - Condición de parada: asegurar que hay suficientes muestras para `preamble_len` chirps
 - Evita desbordamiento de índice
@@ -616,6 +654,7 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
             x = ii - round(pk_bin_list[-1] / zero_padding_ratio * 2)
             return x
 ```
+
 - **Condición de éxito**: se encontraron `preamble_len` chirps consecutivos consistentes
 - **Cálculo de `x` (índice de inicio)**:
   - `ii`: posición actual (después del último chirp detectado)
@@ -628,6 +667,7 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
         pk_val, pk_bin = dechirp_cpa(sig, ii, SF, T, Bw, is_up=True,
                                      zero_padding_ratio=zero_padding_ratio)
 ```
+
 - **Dechirping de ventana actual**:
   - Aplica `dechirp_cpa` en posición `ii`
   - `is_up=True`: busca up-chirps (preámbulo)
@@ -636,12 +676,14 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
 ```python
         if pk_bin_list:
 ```
+
 - Verifica si ya hay bins detectados previamente
 - Si es True: validar consistencia con detecciones anteriores
 
 ```python
             bin_diff = (pk_bin_list[-1] - pk_bin) % bin_num
 ```
+
 - **Cálculo de diferencia de bins**:
   - Compara bin actual con bin anterior
   - Módulo `bin_num`: maneja wraparound cíclico
@@ -651,6 +693,7 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
             if bin_diff > bin_num / 2:
                 bin_diff = bin_num - bin_diff
 ```
+
 - **Corrección de distancia circular**:
   - Si diferencia > mitad del espectro, usar complemento
   - Ejemplo: bins 10 y 1270 en espectro de 1280 bins
@@ -664,6 +707,7 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
             else:
                 pk_bin_list = [pk_bin]  # Bins inconsistentes → reiniciar
 ```
+
 - **Criterio de consistencia**: `bin_diff <= zero_padding_ratio`
   - Para zero_padding_ratio=10: bins deben diferir en ≤10 bins
   - **Si consistente**: agregar a lista (posible preámbulo continúa)
@@ -674,12 +718,14 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
         else:
             pk_bin_list = [pk_bin]  # Primera detección
 ```
+
 - Si lista vacía: inicializar con primer bin detectado
 - Comienza nueva búsqueda de secuencia
 
 ```python
         ii += sample_num    # Avanzar ventana
 ```
+
 - Avanza ventana un chirp completo (con oversampling 2×)
 - **Eficiencia**: no evalúa cada muestra, sino cada chirp potencial
 - Reduce carga computacional significativamente
@@ -687,6 +733,7 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
 ```python
     return -1  # No se detectó preámbulo
 ```
+
 - Si el bucle termina sin encontrar `preamble_len` chirps consecutivos
 - Retorna -1 como indicador de fallo
 - Receptor debe esperar siguiente paquete
@@ -694,6 +741,7 @@ def detect_preamble_v2(sig, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
 **Relación con el Paper (Sección 3.1)**:
 
 Esta función implementa:
+
 1. **Window Alignment coarse**: detección inicial del inicio de paquete
 2. **Uso de oversampling 2×**: según recomendación del paper
 3. **Tolerancia a CFO**: mediante diferencia circular de bins
@@ -707,7 +755,7 @@ Esta función implementa:
 
 **Propósito**: Sincronización fina detectando el SFD y calculando el CFO (Carrier Frequency Offset).
 
-#### Código Completo:
+#### Código Completo
 
 ```python
 def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
@@ -770,11 +818,12 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
     return x_sync, preamble_bin, cfo
 ```
 
-#### Explicación Línea por Línea:
+#### Explicación Línea por Línea
 
 ```python
 def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
 ```
+
 - **Parámetros**:
   - `x_coarse`: estimación inicial del inicio de preámbulo (salida de `detect_preamble_v2`)
   - Objetivo: refinar esta estimación a nivel de muestra
@@ -786,6 +835,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
     x = x_coarse
     found = False
 ```
+
 - Inicialización de variables
 - `x`: índice que se irá refinando
 - `found`: flag para indicar detección de SFD
@@ -795,6 +845,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
 ```python
     while (x < len(sig) - sample_num):
 ```
+
 - Bucle para buscar transición de up-chirps a down-chirps
 - Comienza desde `x_coarse` (final estimado del preámbulo)
 
@@ -802,6 +853,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
         up_peak = dechirp_cpa(sig, x, SF, T, Bw, is_up=True, ...)
         down_peak = dechirp_cpa(sig, x, SF, T, Bw, is_up=False, ...)
 ```
+
 - **Dechirping dual**: aplica ambos tipos de chirp de referencia
 - `up_peak`: magnitud cuando se busca up-chirp
 - `down_peak`: magnitud cuando se busca down-chirp
@@ -811,6 +863,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
         if (abs(down_peak[0]) > abs(up_peak[0])):
             found = True
 ```
+
 - **Detección de SFD**: cuando down-chirp domina
 - El SFD consiste en down-chirps, marcando fin del preámbulo
 - `abs()`: toma valor absoluto de la amplitud del pico
@@ -820,6 +873,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
         if (found):
             break
 ```
+
 - Avanza una posición de chirp completo
 - Sale del bucle cuando detecta SFD
 
@@ -827,6 +881,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
     if (not found):
         return x_coarse, 0, 0.0
 ```
+
 - Si no se encuentra SFD: retorna valores por defecto
 - Indica fallo en sincronización
 
@@ -835,6 +890,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
 ```python
     pkd = dechirp_cpa(sig, x, SF, T, Bw, is_up=False, ...)
 ```
+
 - Dechirping del down-chirp en posición actual `x`
 - Obtiene bin del pico para ajuste fino
 
@@ -844,6 +900,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
     else:
         to = round(pkd[1] / zero_padding_ratio)
 ```
+
 - **Cálculo de time offset (`to`)**:
   - `pkd[1]`: bin del pico detectado
   - Si bin > mitad del espectro: interpretar como negativo (wraparound)
@@ -853,6 +910,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
 ```python
     x = x + to
 ```
+
 - Aplica corrección de time offset
 - Ahora `x` apunta con precisión de muestra al inicio del down-chirp
 
@@ -862,6 +920,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
     pku = dechirp_cpa(sig, x - 4*sample_num, SF, T, Bw, is_up=True, ...)
     preamble_bin = pku[1]
 ```
+
 - **Mirar hacia atrás**: 4 chirps antes (dentro del preámbulo)
 - Dechirp de up-chirp para obtener bin de referencia
 - **Uso**: `preamble_bin` representa el offset de frecuencia base
@@ -875,6 +934,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
     else:
         cfo = preamble_bin * Bw / bin_num
 ```
+
 - **Cálculo de CFO (Carrier Frequency Offset)**:
   - Maneja wraparound: bins > mitad se interpretan como negativos
   - `* Bw / bin_num`: convierte bin a frecuencia en Hz
@@ -882,6 +942,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
   - CFO es el desplazamiento de frecuencia de portadora
   - Causado por diferencia de osciladores entre TX y RX
 - **Ecuación (del paper)**:
+
   ```
   CFO/f_RF = τ/T = SFO/f_samp
   ```
@@ -892,6 +953,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
     pku_prev = dechirp_cpa(sig, x - sample_num, SF, T, Bw, is_up=True, ...)
     pkd_prev = dechirp_cpa(sig, x - sample_num, SF, T, Bw, is_up=False, ...)
 ```
+
 - Analiza el chirp **anterior** a la posición actual
 - Determina si es up-chirp o down-chirp
 
@@ -901,6 +963,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
     else:
         x_sync = x + round(1.25 * sample_num)
 ```
+
 - **Lógica**:
   - Si chirp anterior es **up-chirp**: estamos en el **1er down-chirp** del SFD
     - Saltar `2.25 * sample_num` para llegar al inicio del payload
@@ -911,6 +974,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
 ```python
     return x_sync, preamble_bin, cfo
 ```
+
 - **Retorna tupla**:
   - `x_sync`: índice preciso del inicio del payload
   - `preamble_bin`: bin de referencia para demodulación
@@ -919,6 +983,7 @@ def sync_frame(sig, x_coarse, SF, T, Bw, zero_padding_ratio=10):
 **Relación con el Paper (Figura 5 y Sección 3.1)**:
 
 Esta función implementa:
+
 1. **SFD Detection**: método robusto para detectar transición
 2. **Time Offset Calculation**: alineación precisa a nivel de muestra
 3. **CFO Estimation**: usando bins del preámbulo
@@ -932,7 +997,7 @@ Esta función implementa:
 
 **Propósito**: Flujo completo de recepción LoRa desde señal en banda base hasta símbolos decodificados.
 
-#### Código Completo:
+#### Código Completo
 
 ```python
 def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
@@ -1002,11 +1067,12 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
     return simbolos_rx, x_sync, cfo, info
 ```
 
-#### Explicación Línea por Línea:
+#### Explicación Línea por Línea
 
 ```python
 def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_ratio=10):
 ```
+
 - **Función principal de recepción**
 - `trama_rx`: señal recibida (puede tener ruido, CFO, etc.)
 - Implementa pipeline completo del receptor LoRa
@@ -1016,6 +1082,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
 ```python
     from scipy import signal as sp_signal
 ```
+
 - Importa módulo de procesamiento de señales de SciPy
 - Necesario para resampleo de alta calidad
 
@@ -1023,12 +1090,14 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
     num_samples_original = len(trama_rx)
     num_samples_target = num_samples_original * 2
 ```
+
 - Calcula número de muestras objetivo: el doble de las originales
 - **Propósito**: aplicar oversampling 2× como recomienda el paper
 
 ```python
     sig_resampled = sp_signal.resample(trama_rx, num_samples_target)
 ```
+
 - `sp_signal.resample`: realiza **interpolación** de alta calidad
 - Método: utiliza FFT para resampleo sin distorsión
 - **Resultado**: señal oversampleada lista para dechirping mejorado
@@ -1040,6 +1109,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
     x_coarse = detect_preamble_v2(sig_resampled, SF, T, Bw, preamble_len,
                                   zero_padding_ratio)
 ```
+
 - Llama a detector de preámbulo sobre señal oversampleada
 - Retorna índice aproximado del inicio del paquete
 
@@ -1048,12 +1118,14 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
         print("No se detectó preámbulo")
         return np.array([]), -1, 0.0, {'status': 'no_preamble'}
 ```
+
 - **Manejo de error**: si no hay preámbulo, abortar
 - Retorna arrays vacíos y diccionario con estado de error
 
 ```python
     print(f"Preámbulo detectado en índice: {x_coarse} (señal oversampleada)")
 ```
+
 - Feedback al usuario sobre detección exitosa
 - Nota importante: índice está en escala oversampleada (2× muestras)
 
@@ -1063,6 +1135,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
     x_sync, preamble_bin, cfo = sync_frame(sig_resampled, x_coarse, SF, T, Bw,
                                            zero_padding_ratio)
 ```
+
 - Refina estimación de inicio usando SFD
 - Obtiene:
   - `x_sync`: índice preciso del inicio del payload
@@ -1075,6 +1148,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
     print(f"- Preamble bin: {preamble_bin}")
     print(f"- CFO estimado: {cfo:.6f} Hz")
 ```
+
 - Reporta parámetros de sincronización
 - Información útil para debugging y análisis de canal
 
@@ -1084,17 +1158,20 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
     M = 2**SF
     sample_num = 2 * M  # Oversampling 2x
 ```
+
 - Recalcula parámetros en escala oversampleada
 
 ```python
     payload_signal = sig_resampled[x_sync:]
 ```
+
 - **Extracción de payload**: desde índice sincronizado hasta el final
 - Contiene solo los símbolos de datos (sin preámbulo ni SFD)
 
 ```python
     n_symbols = len(payload_signal) // sample_num
 ```
+
 - Calcula cuántos símbolos completos hay disponibles
 - División entera: descarta muestras incompletas al final
 
@@ -1103,6 +1180,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
         print("No hay suficientes muestras para payload")
         return np.array([]), x_sync, cfo, {'status': 'no_payload'}
 ```
+
 - Validación: asegura que hay al menos un símbolo
 - Manejo de caso donde trama es muy corta o se perdió payload
 
@@ -1111,6 +1189,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
 ```python
     payload_chirps = payload_signal[:n_symbols*sample_num].reshape((n_symbols, sample_num))
 ```
+
 - **Reshape crítico**:
   - Entrada: vector de `n_symbols × sample_num` muestras
   - Salida: matriz de dimensión `(n_symbols, sample_num)`
@@ -1123,12 +1202,14 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
 ```python
     down_ref = downchirp_2x(SF)
 ```
+
 - Genera down-chirp de referencia con oversampling 2×
 - **Dimensión**: vector de longitud `sample_num = 2M`
 
 ```python
     producto = payload_chirps * down_ref
 ```
+
 - **Broadcasting de NumPy**:
   - `payload_chirps`: matriz `(n_symbols, sample_num)`
   - `down_ref`: vector `(sample_num,)`
@@ -1140,6 +1221,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
 ```python
     fft_producto = np.fft.fft(producto, axis=1)
 ```
+
 - **FFT por filas** (`axis=1`):
   - Aplica FFT a cada chirp dechirped independientemente
   - Resultado: matriz `(n_symbols, sample_num)` en dominio de frecuencia
@@ -1150,6 +1232,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
 ```python
     simbolos_raw = np.argmax(np.abs(fft_producto), axis=1)
 ```
+
 - `np.abs()`: magnitud del espectro complejo
 - `np.argmax(..., axis=1)`: encuentra índice del pico máximo en cada fila
 - `simbolos_raw`: vector de `n_symbols` enteros (bins detectados)
@@ -1160,6 +1243,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
 ```python
     simbolos_ajustados = (simbolos_raw - preamble_bin) % sample_num
 ```
+
 - **Resta del offset de referencia**:
   - `preamble_bin`: offset de frecuencia base (del preámbulo)
   - Compensar CFO restando este offset a todos los símbolos
@@ -1168,6 +1252,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
 ```python
     simbolos_rx = (simbolos_ajustados * M // sample_num).astype(int) % (2**SF)
 ```
+
 - **Conversión de bins oversampleados a símbolos**:
   - `simbolos_ajustados`: bins en escala `sample_num = 2M`
   - `* M // sample_num`: escala a rango `[0, M-1]`
@@ -1187,6 +1272,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
         'n_symbols': n_symbols
     }
 ```
+
 - **Diccionario de metadatos**:
   - `status`: éxito/fallo
   - Parámetros de sincronización
@@ -1196,6 +1282,7 @@ def demodulate_frame_complete(trama_rx, SF, T, Bw, preamble_len=8, zero_padding_
 ```python
     return simbolos_rx, x_sync, cfo, info
 ```
+
 - **Retorna**:
   - `simbolos_rx`: símbolos demodulados (listos para decoder)
   - `x_sync`: índice de sincronización (referencia temporal)
@@ -1219,7 +1306,7 @@ Esta función integra todos los conceptos del paper:
 
 **Ubicación**: Proyecto-LoRa.ipynb, celdas `elqz4b8h96k`
 
-### Código de Prueba:
+### Código de Prueba
 
 ```python
 print("="*60)
@@ -1284,7 +1371,7 @@ else:
     print(f"DETECCIÓN FALLIDA: {info['status']}")
 ```
 
-### Explicación del Código de Prueba:
+### Explicación del Código de Prueba
 
 1. **Configuración**: SF=7, símbolos de prueba conocidos
 2. **Generación**: `build_tx_frame` crea trama completa
@@ -1292,13 +1379,15 @@ else:
 4. **Demodulación**: `demodulate_frame_complete` recupera símbolos
 5. **Validación**: compara símbolos TX vs RX, calcula SER
 
-### Resultado Esperado:
+### Resultado Esperado
 
 Para canal ideal (sin ruido):
+
 - **SER = 0**: todos los símbolos correctos
 - `simbolos_rx == simbolos_tx`
 
 Si hay error, puede deberse a:
+
 - Problema de sincronización
 - Error en oversampling/resampling
 - Bug en compensación de CFO
@@ -1307,10 +1396,12 @@ Si hay error, puede deberse a:
 
 ## Referencias
 
-### Paper Principal:
-**Zhenqiang Xu, Shuai Tong, Pengjin Xie, and Jiliang Wang.** 2022. *From Demodulation to Decoding: Toward Complete LoRa PHY Understanding and Implementation*. ACM Trans. Sensor Netw. 18, 4, Article 64 (December 2022), 27 pages. https://doi.org/10.1145/3546869
+### Paper Principal
 
-### Secciones Clave del Paper:
+**Zhenqiang Xu, Shuai Tong, Pengjin Xie, and Jiliang Wang.** 2022. *From Demodulation to Decoding: Toward Complete LoRa PHY Understanding and Implementation*. ACM Trans. Sensor Netw. 18, 4, Article 64 (December 2022), 27 pages. <https://doi.org/10.1145/3546869>
+
+### Secciones Clave del Paper
+
 - **Sección 3.1**: Phase-aligned Dechirping (FPA y CPA)
 - **Sección 3.2**: Clock Recovery
 - **Figura 4**: Comparación de métodos de dechirping
@@ -1330,16 +1421,17 @@ La implementación de transmisión y detección de tramas LoRa sigue fielmente e
 4. **Sincronización robusta**: Detección de preámbulo + alineación fina con SFD
 5. **Compensación de CFO**: Usando bin de referencia del preámbulo
 
-### Ventajas de esta Implementación:
+### Ventajas de esta Implementación
 
 - **Sensibilidad extrema**: Capaz de trabajar con SNR de -20 dB (teóricamente)
 - **Robustez**: Tolerante a CFO, clock drift, y desalineación de fase
 - **Eficiencia computacional**: CPA vs FPA (trade-off rendimiento/costo)
 - **100% de tasa de decodificación**: En condiciones ideales
 
-### Próximos Pasos:
+### Próximos Pasos
 
 Para completar el receptor LoRa:
+
 1. Aplicar funciones de **decoding** (Gray, deinterleaving, Hamming, dewhitening)
 2. Extraer y validar **header PHY**
 3. Verificar **CRC** del payload
