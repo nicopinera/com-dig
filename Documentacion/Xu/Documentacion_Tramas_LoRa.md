@@ -81,6 +81,7 @@ El paper propone un enfoque basado en **oversampling** para resolver la desaline
 **Método con sobremuestreo**:
 
 1. **Sin oversampling** (frecuencia de muestreo = B):
+
    - Ambos segmentos se traducen a la misma frecuencia (aliasing)
    - La desalineación de fase causa cancelación destructiva
 
@@ -94,7 +95,7 @@ El paper propone un enfoque basado en **oversampling** para resolver la desaline
 
 Para combinar coherentemente los dos picos:
 
-```
+```bash
 Δφ = i × 2π/k,  i = 0, 1, ..., k-1
 ```
 
@@ -121,7 +122,7 @@ Método alternativo de menor costo computacional:
 
 El paper proporciona análisis teórico del Symbol Error Rate (SER):
 
-```
+```bash
 SER = P(h_d < h_n)
 ```
 
@@ -158,7 +159,7 @@ Los dispositivos LoRa de bajo costo tienen osciladores con **clock drift**:
 
 Desplazamiento de frecuencia de inicio:
 
-```
+```bash
 Δf = (B/T) × τ
 ```
 
@@ -172,7 +173,7 @@ Relación con CFO:
 
 El desplazamiento estimado de bin entre símbolos consecutivos:
 
-```
+```bash
 Δbin = (CFO/f_RF) × 2^SF
 ```
 
@@ -469,7 +470,7 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
 
 - `M_local`: muestras por chirp a frecuencia Bw
 - `sample_num`: muestras con **oversampling 2×**
-- Según el paper (página 7): "señal muestreada a 2*Bw"
+- Según el paper (página 7): "señal muestreada a 2\*Bw"
 - **Propósito**: separar los dos segmentos del chirp en frecuencia
 
 ```python
@@ -516,7 +517,7 @@ def dechirp_cpa(sig, start_idx, SF, T, Bw, is_up=True, zero_padding_ratio=10):
 - **Operación de dechirping**: multiplicación punto a punto
 - Matemáticamente (para up-chirp):
 
-  ```
+  ```bash
   r(k) * exp(-j2π * k²/(2M))
   ```
 
@@ -1398,7 +1399,7 @@ Si hay error, puede deberse a:
 
 ### Paper Principal
 
-**Zhenqiang Xu, Shuai Tong, Pengjin Xie, and Jiliang Wang.** 2022. *From Demodulation to Decoding: Toward Complete LoRa PHY Understanding and Implementation*. ACM Trans. Sensor Netw. 18, 4, Article 64 (December 2022), 27 pages. <https://doi.org/10.1145/3546869>
+**Zhenqiang Xu, Shuai Tong, Pengjin Xie, and Jiliang Wang.** 2022. _From Demodulation to Decoding: Toward Complete LoRa PHY Understanding and Implementation_. ACM Trans. Sensor Netw. 18, 4, Article 64 (December 2022), 27 pages. <https://doi.org/10.1145/3546869>
 
 ### Secciones Clave del Paper
 
